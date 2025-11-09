@@ -21,11 +21,21 @@ class PlayerManager:
         
     def initialiser_joueurs(self):
         """Initialise les joueurs selon le mode de jeu"""
+        from config.constants import TERRAIN_X_MIN, TERRAIN_X_MAX, TERRAIN_Y_MAX
+        
         # Joueur 1
         taille = Joueur1["taille"]
         vitesse_deplacement = Joueur1["vitesse_deplacement"]
         
-        self.player1 = Player(Joueur1["cx"], Joueur1["cy"], taille, 1, "Pacman1")
+        # Position du joueur 1 selon le mode
+        if self.deux_joueurs:
+            # Mode 2 joueurs : joueur 1 en bas à gauche
+            player1_x, player1_y = TERRAIN_X_MIN, TERRAIN_Y_MAX
+        else:
+            # Mode 1 joueur : joueur 1 au milieu du bas
+            player1_x, player1_y = (TERRAIN_X_MIN + TERRAIN_X_MAX) // 2, TERRAIN_Y_MAX
+        
+        self.player1 = Player(player1_x, player1_y, taille, 1, "Pacman1")
         self.players.append(self.player1)
         
         # Initialisation des historiques joueur 1
@@ -38,10 +48,12 @@ class PlayerManager:
         
         # Joueur 2 si mode deux joueurs
         if self.deux_joueurs:
-            config_joueur2 = configurer_joueur2(True)
+            # Mode 2 joueurs : joueur 2 en bas à droite
+            player2_x, player2_y = TERRAIN_X_MAX, TERRAIN_Y_MAX
+            
             self.player2 = Player(
-                config_joueur2["cx2"], 
-                config_joueur2["cy2"], 
+                player2_x, 
+                player2_y, 
                 taille, 
                 2, 
                 "Pacman2"
@@ -50,12 +62,22 @@ class PlayerManager:
             
             # Initialisation des historiques joueur 2
             self.historiques[2] = {
-                'positions': config_joueur2["historique_positions2"],
-                'trace': config_joueur2["trait_joueur_actuel2"],
-                'deplacement': config_joueur2["historique_deplacement2"],
-                'vitesse_tracage': config_joueur2["vitesse_tracage2"]
+                'positions': [],
+                'trace': [],
+                'deplacement': [],
+                'vitesse_tracage': vitesse_deplacement
             }
             
+        # Dessine les joueurs immédiatement pour qu'ils soient visibles au démarrage
+        try:
+            if self.player1:
+                self.player1.draw()
+            if self.deux_joueurs and self.player2:
+                self.player2.draw()
+        except Exception:
+            # Si le contexte graphique n'est pas encore prêt, on ignore l'erreur
+            pass
+
         return self.player1, self.player2, taille, vitesse_deplacement
     
     def handle_all_input(self, input_handler, zone_safe, vitesse_deplacement):

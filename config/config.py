@@ -15,7 +15,7 @@ from config.constants import (
 
 # ------------------ Joueur 1 ------------------
 Joueur1 = {
-    "cx": (TERRAIN_X_MIN + TERRAIN_X_MAX) / 2,  # Position X de départ (bordure gauche)
+    "cx": TERRAIN_X_MIN,  # Position X de départ (bordure gauche)
     "cy": TERRAIN_Y_MAX,  # Position Y de départ (bordure bas)
     "taille": 10,         # Taille du joueur
     "iteration": 0,       # Compteur d'itérations
@@ -68,8 +68,10 @@ def charger_obstacles(predefini=True, aleatoire=False):
 # ------------------ Pommes ------------------
 def placer_pomme(zone_obstacle):
     #Génère une position aléatoire pour placer une pomme/bonus
+    from core.game_state import game_state
     x, y = randint(100, 500), randint(250, 700)
-    while x % GRILLE_PAS != 0 or y % GRILLE_PAS != 0 or [x, y] in zone_obstacle:
+    while (x % GRILLE_PAS != 0 or y % GRILLE_PAS != 0 or 
+           game_state.is_point_in_obstacle(x, y)):
         x, y = randint(100, 500), randint(250, 700)
     return x, y
 
@@ -137,24 +139,30 @@ def creer_sparks_manager(niveau=1, mode_menu=False):
             {"x": 550, "y": 200, "sprite": "ressources/Fantome2.png", "direction": "Gauche"},
         ]
     else:
-        # Sparks de base (niveau 1+)
+        # Sparks de base (niveau 1+) - positionnés aux extrémités de la bordure du haut
         sparks_configs = [
             {"x": TERRAIN_X_MIN, "y": TERRAIN_Y_MIN, "sprite": SPRITES_SPARKS[0]},
-            {"x": TERRAIN_X_MIN, "y": TERRAIN_Y_MIN, "sprite": SPRITES_SPARKS[1]},
+            {"x": TERRAIN_X_MAX, "y": TERRAIN_Y_MIN, "sprite": SPRITES_SPARKS[1]},
         ]
     
     # Sparks supplémentaires niveau 2+ (seulement si pas en mode menu)
     if not mode_menu and niveau >= 2:
+        # Répartition sur la bordure du haut : 1/3 et 2/3 de la largeur
         sparks_configs.extend([
-            {"x": 50, "y": 205, "sprite": SPRITES_SPARKS[2]},
-            {"x": 550, "y": 205, "sprite": SPRITES_SPARKS[3]},
+            # Sparks3 : 1/3 de la bordure du haut
+            {"x": TERRAIN_X_MIN + (TERRAIN_X_MAX - TERRAIN_X_MIN) // 3, "y": TERRAIN_Y_MIN, "sprite": SPRITES_SPARKS[2]},
+            # Sparks4 : 2/3 de la bordure du haut
+            {"x": TERRAIN_X_MIN + 2 * (TERRAIN_X_MAX - TERRAIN_X_MIN) // 3, "y": TERRAIN_Y_MIN, "sprite": SPRITES_SPARKS[3]},
         ])
     
     # Sparks supplémentaires niveau 3 (seulement si pas en mode menu)
     if not mode_menu and niveau >= 3:
+        # Répartition sur la bordure du haut : positions intermédiaires
         sparks_configs.extend([
-            {"x": 175, "y": 200, "sprite": SPRITES_SPARKS[4]},
-            {"x": 425, "y": 200, "sprite": SPRITES_SPARKS[0]},
+            # Sparks5 : 1/6 de la bordure du haut
+            {"x": TERRAIN_X_MIN + (TERRAIN_X_MAX - TERRAIN_X_MIN) // 6, "y": TERRAIN_Y_MIN, "sprite": SPRITES_SPARKS[4]},
+            # Sparks6 : 5/6 de la bordure du haut
+            {"x": TERRAIN_X_MIN + 5 * (TERRAIN_X_MAX - TERRAIN_X_MIN) // 6, "y": TERRAIN_Y_MIN, "sprite": SPRITES_SPARKS[0]},
         ])
     
     # Créer les Sparks
@@ -187,10 +195,10 @@ def configurer_joueur2(deux_joueurs=True):
         return {"touche_espace": "space"}
     
     return {
-        "cx": TERRAIN_X_MAX,  # Position joueur 1 (bordure droite)
-        "cy": TERRAIN_Y_MAX,  # Position joueur 1 (bordure bas)
-        "cx2": TERRAIN_X_MIN, # Position joueur 2 (bordure gauche)
-        "cy2": TERRAIN_Y_MAX, # Position joueur 2 (bordure bas)
+        "cx": TERRAIN_X_MIN,   
+        "cy": TERRAIN_Y_MAX,   
+        "cx2": TERRAIN_X_MAX,  
+        "cy2": TERRAIN_Y_MAX,  
         "historique_positions2": [],
         "trait_joueur_actuel2": [],
         "iteration2": 0,

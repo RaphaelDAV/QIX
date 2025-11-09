@@ -19,7 +19,7 @@ class VictoryManager:
     def __init__(self):
         self.elements_a_effacer = [
             "coeur3", "sparks1", "sparks2", "sparks3", 
-            "sparks4", "sparks5", "sparks6", "Fantome_QIX", "joueur1"
+            "sparks4", "sparks5", "sparks6", "Fantome_QIX", "joueur1", "joueur2"
         ]
     
     def check_victory_condition(self, surface_recouverte, deux, quel_joueur):
@@ -31,21 +31,24 @@ class VictoryManager:
         return False
     
     def display_victory_screen(self, deux, scorev, surface_recouverte, 
-                              score1=0, score2=0, score=0):
+                              score1=0, score2=0, score=0, winner_player=None):
         """Affiche l'écran de victoire selon le mode de jeu"""
         self._clear_game_elements()
         self._create_victory_background()
         
         if deux:
-            self._display_multiplayer_victory(scorev, surface_recouverte, score1, score2)
+            self._display_multiplayer_victory(scorev, surface_recouverte, score1, score2, winner_player)
         else:
             self._display_singleplayer_victory(scorev, surface_recouverte, score)
         
         return False
     
     def _clear_game_elements(self):
+        from fltk import mise_a_jour
         for element in self.elements_a_effacer:
             efface(element)
+        # Forcer la mise à jour pour que les éléments soient effectivement effacés
+        mise_a_jour()
     
     def _create_victory_background(self):
         rectangle(
@@ -57,10 +60,8 @@ class VictoryManager:
     def _display_multiplayer_victory(self, scorev, surface_recouverte, score1, score2):
         self._display_surface_info(surface_recouverte, y_position=TERRAIN_Y_MAX-200)
         
-        if scorev:
-            self._display_multiplayer_scores_and_winner(score1, score2)
-        else:
-            self._display_simple_victory_message()
+        # Toujours afficher le gagnant en mode deux joueurs
+        self._display_multiplayer_scores_and_winner(score1, score2, show_scores=scorev)
     
     def _display_singleplayer_victory(self, scorev, surface_recouverte, score):
         self._display_simple_victory_message()
@@ -70,13 +71,15 @@ class VictoryManager:
         
         self._display_surface_info(surface_recouverte, y_position=500)
     
-    def _display_multiplayer_scores_and_winner(self, score1, score2):
+    def _display_multiplayer_scores_and_winner(self, score1, score2, show_scores=True):
         if score1 > score2:
             self._display_winner_announcement("JOUEUR 1 À GAGNÉ")
-            self._display_player_scores(score1, score2, joueur1_gagne=True)
+            if show_scores:
+                self._display_player_scores(score1, score2, joueur1_gagne=True)
         elif score2 > score1:
             self._display_winner_announcement("JOUEUR 2 À GAGNÉ")
-            self._display_player_scores(score1, score2, joueur1_gagne=False)
+            if show_scores:
+                self._display_player_scores(score1, score2, joueur1_gagne=False)
         else:
             self._display_simple_victory_message()
     

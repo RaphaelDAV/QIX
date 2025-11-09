@@ -4,7 +4,11 @@ from config.constants import (
     VIES_INITIALES, 
     VITESSE_TRACAGE_LENTE, 
     VITESSE_TRACAGE_RAPIDE,
-    GRILLE_PAS
+    GRILLE_PAS,
+    TERRAIN_X_MIN,
+    TERRAIN_X_MAX,
+    TERRAIN_Y_MIN,
+    TERRAIN_Y_MAX
 )
 
 
@@ -120,11 +124,13 @@ class Player:
         
         for key, (vel_x, vel_y, direction) in controls.items():
             if input_handler(key):
-                new_x = self.x + (GRILLE_PAS if vel_x > 0 else -GRILLE_PAS if vel_x < 0 else 0)
-                new_y = self.y + (GRILLE_PAS if vel_y > 0 else -GRILLE_PAS if vel_y < 0 else 0)
+                step_x = GRILLE_PAS if vel_x > 0 else -GRILLE_PAS if vel_x < 0 else 0
+                step_y = GRILLE_PAS if vel_y > 0 else -GRILLE_PAS if vel_y < 0 else 0
+                new_x = self.x + step_x
+                new_y = self.y + step_y
                 
                 if [new_x, new_y] in zone_safe:
-                    dx, dy = vel_x, vel_y
+                    dx, dy = step_x, step_y
                     self.direction = direction
                 break
         
@@ -149,6 +155,14 @@ class Player:
                 "z": (0, -vitesse_tracage, "Haut")
             }
         
+        # Définition des directions opposées pour empêcher le demi-tour
+        directions_opposees = {
+            "Gauche": "Droite",
+            "Droite": "Gauche", 
+            "Haut": "Bas",
+            "Bas": "Haut"
+        }
+        
         if input_handler(space_key) and any(input_handler(key) for key in controls.keys()):
             
             if self.iteration == 0:
@@ -157,14 +171,43 @@ class Player:
             
             for key, (vel_x, vel_y, direction) in controls.items():
                 if input_handler(key):
+                    # Vérification anti-demi-tour : empêcher de revenir dans la direction opposée
+                    if (len(self.historique_deplacement) > 0 and 
+                        self.historique_deplacement[-1] in directions_opposees and
+                        direction == directions_opposees[self.historique_deplacement[-1]]):
+                        continue  # Ignorer cette direction (demi-tour interdit)
+                    
                     step = GRILLE_PAS * (int(vitesse_tracage / GRILLE_PAS))
-                    new_x = self.x + (step if vel_x > 0 else -step if vel_x < 0 else 0)
-                    new_y = self.y + (step if vel_y > 0 else -step if vel_y < 0 else 0)
+                    proposed_x = self.x + (step if vel_x > 0 else -step if vel_x < 0 else 0)
+                    proposed_y = self.y + (step if vel_y > 0 else -step if vel_y < 0 else 0)
+                    
+                    # Ajustement pour les bordures : si la position proposée sort du terrain,
+                    # ajuster pour s'arrêter exactement à la bordure
+                    new_x = proposed_x
+                    new_y = proposed_y
+                    
+                    # Vérifier les limites du terrain et ajuster si nécessaire
+                    if vel_x > 0:  # Mouvement vers la droite
+                        if proposed_x > TERRAIN_X_MAX:
+                            new_x = TERRAIN_X_MAX
+                    elif vel_x < 0:  # Mouvement vers la gauche
+                        if proposed_x < TERRAIN_X_MIN:
+                            new_x = TERRAIN_X_MIN
+                            
+                    if vel_y > 0:  # Mouvement vers le bas
+                        if proposed_y > TERRAIN_Y_MAX:
+                            new_y = TERRAIN_Y_MAX
+                    elif vel_y < 0:  # Mouvement vers le haut
+                        if proposed_y < TERRAIN_Y_MIN:
+                            new_y = TERRAIN_Y_MIN
                     
                     check_pos = [new_x, new_y]
+                    # Vérification supplémentaire : ne pas revenir sur une position déjà tracée
+                    from core.game_state import game_state
                     if (check_pos in zone_terrain and 
                         check_pos not in zone_polygone and 
-                        check_pos not in zone_obstacle):
+                        not game_state.is_point_in_obstacle(new_x, new_y) and
+                        check_pos not in self.trait_joueur_actuel):  # Empêcher de revenir sur le trait
                         dx, dy = vel_x, vel_y
                         
                         from fltk import ligne
@@ -201,7 +244,6 @@ class Player:
             
         if touche_pressee(self.touche_vitesse) and [self.x, self.y] in zone_safe:
             self.last_speed_change = current_time
-            self.touche_vitesse = None
             
             speed_tag = f"vitesse{self.player_id if self.player_id > 1 else ''}"
             efface(speed_tag)
@@ -218,7 +260,6 @@ class Player:
                 texte(x_pos, 170, "Lente", couleur="green", taille=15,
                       police="Copperplate Gothic Bold", tag=speed_tag)
             
-            self.touche_vitesse = "v"
             return True
             
         return False

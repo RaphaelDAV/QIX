@@ -114,13 +114,17 @@ def configurer_niveau(niveau_actuel):
 
 
 def initialiser_obstacles():
-    """Charge et dessine les obstacles ; remplit zone_obstacle pour les collisions."""
+    """Charge et dessine les obstacles ; stocke les rectangles pour les collisions."""
     obstacle = game_state.config["obstacle"]
     obstacle_predefini = game_state.config["obstacle_predefini"]
     obstacle_aleatoire = game_state.config["obstacle_aleatoire"]
-    zone_obstacle = game_state.get_zone('zone_obstacle')
     
     matobstacles = charger_obstacles(obstacle_predefini, obstacle_aleatoire)
+    
+    # Stocker les rectangles d'obstacles au lieu de tous les pixels
+    zone_obstacle = game_state.get_zone('zone_obstacle')
+    zone_obstacle.clear()  # Vider la zone précédente
+    
     if obstacle and matobstacles:
         for obstacles in matobstacles:
             rectangle(
@@ -128,9 +132,9 @@ def initialiser_obstacles():
                 obstacles[0] + obstacles[2], obstacles[1] + obstacles[2],
                 "gray", "gray", tag="obstacle"
             )
-            for i in range(obstacles[0], obstacles[0] + obstacles[2]):
-                for k in range(obstacles[1], obstacles[1] + obstacles[2]):
-                    zone_obstacle.append([i, k])
+            # Stocker seulement les coordonnées du rectangle [x, y, taille]
+            zone_obstacle.append([obstacles[0], obstacles[1], obstacles[2]])
+    
     return matobstacles
 
 
@@ -205,6 +209,12 @@ def jeu():
     else:
         vitesse_tracage = vitesse_deplacement  # vitesse par défaut
         
+    # Initialisation vitesse traçage pour joueur 2
+    vitesse_tracage2 = vitesse_tracage
+        
+    # Mise à jour des contrôles selon le mode de jeu
+    game_state.update_controls_for_mode()
+    
     # Configuration des contrôles depuis game_state
     touche_V = game_state.controls["touche_V"]
     touche_V2 = game_state.controls["touche_V2"]
@@ -227,7 +237,8 @@ def jeu():
     player1.vitesse_tracage = vitesse_tracage
     player1.touche_vitesse = touche_V
     if deux and player2 is not None:
-        player2.vitesse_tracage = vitesse_tracage
+        player2.vitesse_tracage = vitesse_tracage2
+        player2.touche_vitesse = touche_V2
         player2.touche_vitesse = touche_V2
 
     # Message de démarrage
@@ -279,7 +290,7 @@ def jeu():
         historique_positions2 = []
         trait_joueur_actuel2 = []
         historique_deplacement2 = []
-        dx2, dy2 = 0, 0
+        # NE PAS réinitialiser dx2, dy2 ici - ils ont déjà été calculés plus haut !
 
         if deux and player2 is not None:
             dx2_trace, dy2_trace = player2.handle_tracing(
@@ -472,13 +483,19 @@ def jeu():
             if 'victory_manager' not in locals():
                 victory_manager = VictoryManager()
             if victory_manager.check_victory_condition(surface_recouverte, deux, quel_joueur):
+                # Effacer immédiatement le QIX et tous les éléments de jeu
+                efface("Fantome_QIX")
+                for i in range(1, 7):
+                    efface(f"sparks{i}")
+                mise_a_jour()  # Forcer la mise à jour immédiate
+                
                 if deux:
                     xQIX, yQIX = 150, 300
                 player1_score = game_state.score1
                 player2_score = game_state.score2
                 single_score = game_state.score
                 run = victory_manager.display_victory_screen(
-                    deux, scorev, surface_recouverte, player1_score, player2_score, single_score
+                    deux, scorev, surface_recouverte, player1_score, player2_score, single_score, quel_joueur
                 )
                 
             # COLLISIONS D'ENFERMEMENT (post-polygone)
@@ -573,5 +590,4 @@ if __name__ == "__main__":
             configurer_game_state(config)
             fenetre()
             jeu()
-            sleep(5)
             ferme_fenetre_securise()

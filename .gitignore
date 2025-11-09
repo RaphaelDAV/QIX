@@ -1,0 +1,60 @@
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtualenvs
+.venv/
+venv/
+env/
+ENV/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+*.whl
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Testing
+.pytest_cache/
+nosetests.xml
+
+# Type checkers / linters
+.mypy_cache/
+.pyre/
+.pylint.d/
+
+# IDEs
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Environment variables
+.env
+.env.*
+
+# Coverage
+htmlcov/
+.coverage
+coverage.xml
+
+# Logs
+*.log
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Compiled extensions
+*.so
+*.dll
+*.pyd
+
+# Misc
+*.egg

@@ -58,9 +58,11 @@ class PlayerCollisionManager:
     
     def _handle_game_over(self, winning_player_num, scorev, score1, score2):
         """Gère la fin de partie et l'affichage du gagnant"""
+        from fltk import mise_a_jour
+        
         elements_to_clear = [
-            "coeur3", "coeur3_2", "sparks2", "sparks1", 
-            "Fantome_QIX", "joueur1", "joueur2"
+            "coeur3", "coeur3_2", "sparks1", "sparks2", "sparks3",
+            "sparks4", "sparks5", "sparks6", "Fantome_QIX", "joueur1", "joueur2"
         ]
         for element in elements_to_clear:
             efface(element)
@@ -75,6 +77,9 @@ class PlayerCollisionManager:
         
         if scorev:
             self._display_final_scores(score1, score2)
+        
+        mise_a_jour()       
+        sleep(5)
         
         return False
     

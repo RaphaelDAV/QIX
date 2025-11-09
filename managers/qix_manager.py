@@ -123,9 +123,11 @@ class QixManager:
                 check_points.add((edge_x, edge_y))
         
         # Vérification optimisée avec conversion directe
+        from core.game_state import game_state
         for point in check_points:
             point_list = [point[0], point[1]]
-            if (point_list in zone_safe or point_list in zone_polygone or point_list in zone_obstacle):
+            if (point_list in zone_safe or point_list in zone_polygone or 
+                game_state.is_point_in_obstacle(point[0], point[1])):
                 return False
         
         return True
@@ -259,10 +261,12 @@ class QixManager:
         """
         Gère la fin de partie
         """
+        from fltk import mise_a_jour
+        
         # Effacer tous les éléments
         elements_to_clear = [
-            "coeur3", "coeur3_2", "sparks2", "sparks1", 
-            "Fantome_QIX", "joueur1", "joueur2"
+            "coeur3", "coeur3_2", "sparks1", "sparks2", "sparks3",
+            "sparks4", "sparks5", "sparks6", "Fantome_QIX", "joueur1", "joueur2"
         ]
         for element in elements_to_clear:
             efface(element)
@@ -286,6 +290,12 @@ class QixManager:
         # Afficher les scores en mode 2 joueurs
         if deux_joueurs and scorev:
             self._display_final_scores(score1, score2)
+        
+        # Mettre à jour l'affichage pour que le message soit visible
+        mise_a_jour()
+        
+        # Attendre 5 secondes pour que le joueur voie le message de défaite
+        sleep(5)
         
         return False
     
