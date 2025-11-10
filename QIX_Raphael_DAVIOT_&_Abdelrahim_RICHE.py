@@ -258,8 +258,7 @@ def jeu():
         ev = donne_ev(); tev = type_ev(ev)
         if tev == "ClicGauche":
             efface("commencer")
-            if mode_menu:
-                sparks_manager.commencer_jeu()
+            sparks_manager.commencer_jeu()  # Commencer le jeu dans tous les modes
         if touche_pressee("Escape"):
             ferme_fenetre()
             run = False
@@ -554,6 +553,52 @@ def jeu():
             game_state.invincibilite1, game_state.invincibilite2, scorev,
             game_state.score, game_state.score1, game_state.score2
         )
+        
+        # GESTION DES SPARKS (déplacement)
+        player_invincible = game_state.invincibilite1 or game_state.invincibilite2
+        sparks_manager.move_all(zone_safe, vitesse_sparks, player_invincible)
+        sparks_manager.check_out_of_bounds(zone_safe)
+        
+        # COLLISIONS AVEC LES SPARKS
+        # Vérifier collision joueur 1
+        sparks_collision = sparks_manager.check_collision_with_player(
+            [player1.x, player1.y], game_state.invincibilite1
+        )
+        if sparks_collision and not game_state.invincibilite1:
+            # Téléporter le Sparks vers sa paire
+            sparks_manager.teleport_sparks_to_pair(sparks_collision)
+            
+            vies_restantes = player1.lose_life()
+            # Mettre à jour l'affichage des vies
+            player_collision_manager._update_life_display(1, vies_restantes)
+            if vies_restantes <= 0:
+                if deux:
+                    # En mode 2 joueurs, l'autre joueur gagne
+                    winner = 2 if player1.player_id == 1 else 1
+                    run = player_collision_manager._handle_game_over(winner, scorev, game_state.score1, game_state.score2)
+                else:
+                    # En mode 1 joueur, game over
+                    from managers.qix_manager import QixManager
+                    temp_qix_manager = QixManager(None)
+                    run = temp_qix_manager._handle_game_over(1, False, scorev, game_state.score1, game_state.score2)
+                break
+        
+        # Vérifier collision joueur 2 (si en mode 2 joueurs)
+        if deux and player2 is not None:
+            sparks_collision2 = sparks_manager.check_collision_with_player(
+                [player2.x, player2.y], game_state.invincibilite2
+            )
+            if sparks_collision2 and not game_state.invincibilite2:
+                # Téléporter le Sparks vers sa paire
+                sparks_manager.teleport_sparks_to_pair(sparks_collision2)
+                
+                vies_restantes2 = player2.lose_life()
+                # Mettre à jour l'affichage des vies
+                player_collision_manager._update_life_display(2, vies_restantes2)
+                if vies_restantes2 <= 0:
+                    # Joueur 1 gagne
+                    run = player_collision_manager._handle_game_over(1, scorev, game_state.score1, game_state.score2)
+                    break
 
         mise_a_jour()
 

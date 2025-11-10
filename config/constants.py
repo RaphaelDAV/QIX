@@ -102,12 +102,12 @@ TOUCHES_JOUEUR2 = {
 
 # ------------------ Directions par défaut des Sparks ------------------
 DIRECTIONS_SPARKS_DEFAUT = {
-    "sparks1": ["Gauche"],
-    "sparks2": ["Droite"],
-    "sparks3": ["Bas"],
-    "sparks4": ["Bas"],
-    "sparks5": ["Gauche"],
-    "sparks6": ["Droite"]
+    "sparks1": ["Droite"],    # Paire 1 : va vers la droite
+    "sparks2": ["Gauche"],    # Paire 1 : va vers la gauche (opposé)
+    "sparks3": ["Droite"],    # Paire 2 : va vers la droite
+    "sparks4": ["Gauche"],    # Paire 2 : va vers la gauche (opposé)
+    "sparks5": ["Droite"],    # Paire 3 : va vers la droite
+    "sparks6": ["Gauche"]     # Paire 3 : va vers la gauche (opposé)
 }
 
 # ------------------ Zones de terrain ------------------

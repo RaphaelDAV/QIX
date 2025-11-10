@@ -10,7 +10,7 @@ from models.sparks import Sparks, SparksManager
 from config.constants import (
     TERRAIN_X_MIN, TERRAIN_Y_MIN, TERRAIN_X_MAX, TERRAIN_Y_MAX,
     VITESSE_DEPLACEMENT_BASE, VITESSE_TRACAGE_LENTE, VITESSE_TRACAGE_RAPIDE,
-    VIES_INITIALES, SPRITES_SPARKS, GRILLE_PAS
+    VIES_INITIALES, SPRITES_SPARKS, GRILLE_PAS, DIRECTIONS_SPARKS_DEFAUT
 )
 
 # ------------------ Joueur 1 ------------------
@@ -105,9 +105,9 @@ VITESSE_TRACAGE = {
 
 # ------------------ Niveaux ------------------
 NIVEAUX = {
-    1: {"longueur_QIX": 6, "vitesse_QIX": 10, "vitesse_sparks": 0},
-    2: {"longueur_QIX": 9, "vitesse_QIX": 20, "vitesse_sparks": 2},
-    3: {"longueur_QIX": 12, "vitesse_QIX": 30, "vitesse_sparks": 2},
+    1: {"longueur_QIX": 6, "vitesse_QIX": 10, "vitesse_sparks": 1},
+    2: {"longueur_QIX": 9, "vitesse_QIX": 20, "vitesse_sparks": 1},
+    3: {"longueur_QIX": 12, "vitesse_QIX": 30, "vitesse_sparks": 1},
 }
 
 
@@ -167,7 +167,10 @@ def creer_sparks_manager(niveau=1, mode_menu=False):
     
     # Créer les Sparks
     for i, config in enumerate(sparks_configs, 1):
-        direction_initiale = config.get("direction", "Gauche")
+        # Utiliser les directions prédéfinies ou direction par défaut
+        sparks_tag = f"sparks{i}"
+        direction_initiale = config.get("direction", DIRECTIONS_SPARKS_DEFAUT.get(sparks_tag, ["Gauche"])[0])
+        
         sparks = Sparks(
             config["x"], 
             config["y"], 
@@ -182,7 +185,7 @@ def creer_sparks_manager(niveau=1, mode_menu=False):
     
     # Marquer le mode menu
     manager.mode_menu = mode_menu
-    manager.jeu_commence = not mode_menu  # En mode menu, le jeu n'a pas encore commencé
+    manager.jeu_commence = False  # Le jeu n'a pas encore commencé, attendre le clic
     
     return manager
 

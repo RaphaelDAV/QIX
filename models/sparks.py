@@ -75,19 +75,39 @@ class Sparks:
         dy = 0
         
         # Déterminer le prochain mouvement en suivant les bordures
-        # Le Sparks tourne dans le sens horaire ou anti-horaire
-        if [self.x - GRILLE_PAS, self.y] in zone_safe and self.historique[-1] != "Droite":
-            dx = -self.deplacement
-            self.historique.append("Gauche")
-        elif [self.x, self.y + GRILLE_PAS] in zone_safe and self.historique[-1] != "Haut":
-            dy = self.deplacement
-            self.historique.append("Bas")
-        elif [self.x + GRILLE_PAS, self.y] in zone_safe and self.historique[-1] != "Gauche":
-            dx = self.deplacement
-            self.historique.append("Droite")
-        elif [self.x, self.y - GRILLE_PAS] in zone_safe and self.historique[-1] != "Bas":
-            dy = -self.deplacement
-            self.historique.append("Haut")
+        # Le sens de rotation dépend de la direction initiale configurée
+        direction_preference = self.historique[0]  # Direction initiale depuis la config
+        
+        # Si direction preference est "Droite", on privilégie de tourner vers la droite (sens anti-horaire)
+        # Si direction preference est "Gauche", on privilégie de tourner vers la gauche (sens horaire)
+        if direction_preference == "Droite":
+            # Sens anti-horaire : Droite -> Haut -> Gauche -> Bas
+            if [self.x + GRILLE_PAS, self.y] in zone_safe and self.historique[-1] != "Gauche":
+                dx = self.deplacement
+                self.historique.append("Droite")
+            elif [self.x, self.y - GRILLE_PAS] in zone_safe and self.historique[-1] != "Bas":
+                dy = -self.deplacement
+                self.historique.append("Haut")
+            elif [self.x - GRILLE_PAS, self.y] in zone_safe and self.historique[-1] != "Droite":
+                dx = -self.deplacement
+                self.historique.append("Gauche")
+            elif [self.x, self.y + GRILLE_PAS] in zone_safe and self.historique[-1] != "Haut":
+                dy = self.deplacement
+                self.historique.append("Bas")
+        else:  # direction_preference == "Gauche"
+            # Sens horaire : Gauche -> Haut -> Droite -> Bas
+            if [self.x - GRILLE_PAS, self.y] in zone_safe and self.historique[-1] != "Droite":
+                dx = -self.deplacement
+                self.historique.append("Gauche")
+            elif [self.x, self.y - GRILLE_PAS] in zone_safe and self.historique[-1] != "Bas":
+                dy = -self.deplacement
+                self.historique.append("Haut")
+            elif [self.x + GRILLE_PAS, self.y] in zone_safe and self.historique[-1] != "Gauche":
+                dx = self.deplacement
+                self.historique.append("Droite")
+            elif [self.x, self.y + GRILLE_PAS] in zone_safe and self.historique[-1] != "Haut":
+                dy = self.deplacement
+                self.historique.append("Bas")
         
         # Déplacer le Sparks si possible
         if dx != 0 or dy != 0:
@@ -201,8 +221,8 @@ class SparksManager:
             player_invincible (bool): Si True, le joueur est invincible, les Sparks
                                       affichent leur sprite "vulnérable"
         """
-        # En mode menu, les sparks ne bougent que si le jeu a commencé
-        if self.mode_menu and not self.jeu_commence:
+        # Les sparks ne bougent que si le jeu a commencé (après le clic)
+        if not self.jeu_commence:
             return  # Pas de mouvement avant le clic
             
         if self.temps_sparks % vitesse == 0:
@@ -256,6 +276,37 @@ class SparksManager:
         
         return None
     
+    def teleport_sparks_to_pair(self, sparks_to_teleport):
+        """
+        Téléporte un Sparks vers sa paire
+        
+        Args:
+            sparks_to_teleport (Sparks): Le Sparks à téléporter
+        """
+        try:
+            sparks_index = self.sparks_list.index(sparks_to_teleport)
+            
+            # Logique de paire selon le nombre de Sparks
+            if len(self.sparks_list) == 2:
+                # Avec 2 Sparks : 0<->1
+                pair_index = 1 - sparks_index
+            elif len(self.sparks_list) == 4:
+                # Avec 4 Sparks : 0<->1, 2<->3
+                pair_index = sparks_index + 1 if sparks_index % 2 == 0 else sparks_index - 1
+            elif len(self.sparks_list) == 6:
+                # Avec 6 Sparks : 0<->1, 2<->3, 4<->5
+                pair_index = sparks_index + 1 if sparks_index % 2 == 0 else sparks_index - 1
+            else:
+                # Cas par défaut : téléporter vers le Sparks suivant
+                pair_index = (sparks_index + 1) % len(self.sparks_list)
+            
+            if 0 <= pair_index < len(self.sparks_list) and pair_index != sparks_index:
+                sparks_to_teleport.teleport_to(self.sparks_list[pair_index])
+        
+        except (ValueError, IndexError):
+            # En cas d'erreur, ne rien faire
+            pass
+
     def get_all_positions(self):
         """Retourne toutes les positions des Sparks"""
         positions = []
