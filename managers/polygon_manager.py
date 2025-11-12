@@ -116,13 +116,29 @@ class PolygonManager:
             zone_safe.append(element)
         
         # Vérifier que les points existent dans la zone safe avant de les chercher
-        if premier_point not in zone_safe or dernier_point not in zone_safe:
-            # Les points ne sont pas dans la zone safe, abandon de l'opération
+        # Pour une ligne droite entre deux bords, on doit chercher les points les plus proches
+        point_debut = premier_point
+        point_fin = dernier_point
+        
+        # Si les points exacts ne sont pas dans zone_safe, chercher les plus proches
+        if premier_point not in zone_safe:
+            point_debut = self._trouver_point_le_plus_proche(premier_point, zone_safe)
+        if dernier_point not in zone_safe:
+            point_fin = self._trouver_point_le_plus_proche(dernier_point, zone_safe)
+        
+        # Si on ne trouve toujours pas les points, essayer avec les premiers et derniers éléments du trait
+        if point_debut not in zone_safe and len(trait_joueur) > 0:
+            point_debut = self._trouver_point_le_plus_proche(trait_joueur[0], zone_safe)
+        if point_fin not in zone_safe and len(trait_joueur) > 0:
+            point_fin = self._trouver_point_le_plus_proche(trait_joueur[-1], zone_safe)
+            
+        # Dernière vérification - si on ne trouve toujours rien, abandonner
+        if point_debut not in zone_safe or point_fin not in zone_safe:
             return
         
         # Trouver les indices des points de début et fin
-        coin1_poly = zone_safe.index(premier_point)
-        coin2_poly = zone_safe.index(dernier_point)
+        coin1_poly = zone_safe.index(point_debut)
+        coin2_poly = zone_safe.index(point_fin)
         
         # Supprimer la partie de zone safe entre les deux points et ajouter le trait
         if coin2_poly > coin1_poly:
@@ -151,6 +167,29 @@ class PolygonManager:
             for i in range(len(trait_joueur)):
                 if trait_joueur[i] not in zone_safe:
                     zone_safe.insert(coin2_poly + i, trait_joueur[i])
+    
+    def _trouver_point_le_plus_proche(self, point_cherche, zone_safe):
+        """
+        Trouve le point le plus proche dans la zone safe
+        
+        Args:
+            point_cherche (list): Point à rechercher [x, y]
+            zone_safe (list): Liste des points de la zone safe
+            
+        Returns:
+            list: Point le plus proche dans zone_safe
+        """
+        if not zone_safe:
+            return point_cherche
+            
+        distances = []
+        for point in zone_safe:
+            distance = ((point[0] - point_cherche[0]) ** 2 + 
+                       (point[1] - point_cherche[1]) ** 2) ** 0.5
+            distances.append((distance, point))
+        
+        # Retourner le point avec la distance minimale
+        return min(distances, key=lambda x: x[0])[1]
     
     def generer_positions_interieures(self, polygone):
         """

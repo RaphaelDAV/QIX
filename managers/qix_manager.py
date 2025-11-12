@@ -75,15 +75,23 @@ class QixManager:
             self._bounce_off_obstacles(nouveau_x, nouveau_y, zone_safe, zone_polygone, zone_obstacle)
     
     def _bounce_off_obstacles(self, nouveau_x, nouveau_y, zone_safe, zone_polygone, zone_obstacle):
-        """Effectue le rebond en fonction de la direction d'arrivée du QIX"""
-        if not self._is_valid_qix_position(nouveau_x, self.qix.y, zone_safe, zone_polygone, zone_obstacle) and self.velocity_x != 0:
+        """Effectue le rebond en fonction de la direction d'arrivée du QIX (rebond logo DVD)"""
+        bloque_x = not self._is_valid_qix_position(nouveau_x, self.qix.y, zone_safe, zone_polygone, zone_obstacle)
+        bloque_y = not self._is_valid_qix_position(self.qix.x, nouveau_y, zone_safe, zone_polygone, zone_obstacle)
+
+        # Si les deux axes sont bloqués (coin), rebond diagonal
+        if bloque_x and bloque_y:
             self.velocity_x = -self.velocity_x
-        elif self._is_valid_qix_position(nouveau_x, self.qix.y, zone_safe, zone_polygone, zone_obstacle):
-                self.qix.x = nouveau_x
-        
-        if not self._is_valid_qix_position(self.qix.x, nouveau_y, zone_safe, zone_polygone, zone_obstacle) and self.velocity_y != 0:
             self.velocity_y = -self.velocity_y
-        elif self._is_valid_qix_position(self.qix.x, nouveau_y, zone_safe, zone_polygone, zone_obstacle):
+        else:
+            if bloque_x and self.velocity_x != 0:
+                self.velocity_x = -self.velocity_x
+            elif not bloque_x:
+                self.qix.x = nouveau_x
+
+            if bloque_y and self.velocity_y != 0:
+                self.velocity_y = -self.velocity_y
+            elif not bloque_y:
                 self.qix.y = nouveau_y
     
     def _calculate_new_position_with_boundaries(self):

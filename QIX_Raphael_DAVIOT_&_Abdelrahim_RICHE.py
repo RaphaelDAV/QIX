@@ -307,17 +307,17 @@ def jeu():
         # ─────────────────────────────────────────────────────────────────────────────────────────────────────────
         if player1.move(dx, dy):
             pass
-        if (player1.is_in_zone(zone_safe) and len(trait_joueur_actuel) == 1) or (
-            player1.is_in_zone(zone_safe) and len(historique_positions) == 1
-        ):
+        # Nettoyer le tracé seulement si le joueur revient vraiment à son point de départ
+        if (player1.is_in_zone(zone_safe) and len(historique_positions) > 0 and 
+            player1.get_position() == historique_positions[0] and len(trait_joueur_actuel) > 0):
             historique_positions.clear(); trait_joueur_actuel.clear()
 
         if deux and player2 is not None:
             if player2.move(dx2, dy2):
                 pass
-            if (player2.is_in_zone(zone_safe) and len(trait_joueur_actuel2) == 1) or (
-                player2.is_in_zone(zone_safe) and len(historique_positions2) == 1
-            ):
+            # Nettoyer le tracé seulement si le joueur revient vraiment à son point de départ
+            if (player2.is_in_zone(zone_safe) and len(historique_positions2) > 0 and 
+                player2.get_position() == historique_positions2[0] and len(trait_joueur_actuel2) > 0):
                 historique_positions2.clear(); trait_joueur_actuel2.clear()
                 
         # ─────────────────────────────────────────────────────────────────────────────────────────────────────────
