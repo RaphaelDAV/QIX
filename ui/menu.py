@@ -25,13 +25,17 @@ class MenuElements:
               ancrage="center", tag=tag)
     
     @staticmethod
-    def creer_bouton_toggle(x, y, largeur, hauteur, texte_bouton, actif=False, tag=None):
-        """Créer un bouton à bascule (activé/désactivé)"""
+    def creer_bouton_toggle(x, y, largeur, hauteur, texte_bouton, actif=False, tag=None, active_color="green"):
+        """Créer un bouton à bascule (activé/désactivé)
+
+        active_color: couleur utilisée quand le bouton est actif (par défaut 'green')
+        """
         if actif:
-            couleur = "green"
-            remplissage = "green"
+            couleur = active_color
+            remplissage = active_color
             epaisseur = None
         else:
+            # Couleur par défaut pour état inactif
             couleur = "yellow"
             remplissage = None
             epaisseur = 5
@@ -195,11 +199,22 @@ def _afficher_boutons_variantes(positions, config):
         'niveau': 'niveau'
     }
     
+    # Couleurs actives par fonctionnalité (modifiable)
+    color_map = {
+        'score': 'purple',
+        'vitesse': 'orange',
+        'obstacle': 'dodgerblue',
+        'bonus': 'seagreen',
+        'deux': 'darkcyan',
+        'niveau': 'crimson'
+    }
+
     for pos_key, config_key in boutons_mapping.items():
         x, y = positions[pos_key]
         MenuElements.creer_bouton_toggle(
             x, y, positions['largeur_bouton'], positions['hauteur_bouton'],
-            pos_key.capitalize(), config[config_key], pos_key
+            pos_key.capitalize(), config[config_key], pos_key,
+            active_color=color_map.get(pos_key, 'green')
         )
     
     # Boutons d'action
@@ -227,8 +242,8 @@ def _afficher_sous_options_obstacle(positions, config):
     couleur1 = "green" if config['obstacle_predefini'] else "gray"
     couleur2 = "green" if config['obstacle_aleatoire'] else "gray"
     
-    MenuElements.creer_bouton(x1, y1, w1, h1, "Prédéfinis", couleur1, tag="obstacle_predefini")
-    MenuElements.creer_bouton(x2, y2, w2, h2, "Aléatoires", couleur2, tag="obstacle_aleatoire")
+    MenuElements.creer_bouton(x1, y1, w1, h1, "Prédéfinis", couleur1, taille_texte=13, tag="obstacle_predefini")
+    MenuElements.creer_bouton(x2, y2, w2, h2, "Aléatoires", couleur2, taille_texte=13, tag="obstacle_aleatoire")
 
 
 def _afficher_sous_options_bonus(positions, config):
@@ -239,8 +254,8 @@ def _afficher_sous_options_bonus(positions, config):
     couleur1 = "green" if config['bonus_predefini'] else "gray"
     couleur2 = "green" if config['bonus_aleatoire'] else "gray"
     
-    MenuElements.creer_bouton(x1, y1, w1, h1, "Prédéfinis", couleur1, tag="bonus_predefini")
-    MenuElements.creer_bouton(x2, y2, w2, h2, "Aléatoires", couleur2, tag="bonus_aleatoire")
+    MenuElements.creer_bouton(x1, y1, w1, h1, "Prédéfinis", couleur1, taille_texte=13, tag="bonus_predefini")
+    MenuElements.creer_bouton(x2, y2, w2, h2, "Aléatoires", couleur2, taille_texte=13, tag="bonus_aleatoire")
 
 
 def _afficher_sous_options_niveau(positions, config):
@@ -303,7 +318,9 @@ def _traiter_clic_variantes(x, y, positions, config):
     if MenuElements.verifier_clic_bouton(x, y, x_q, y_q, 
                                        positions['largeur_bouton'], 
                                        positions['hauteur_bouton']):
-        return None  # Quitter sera géré par ferme_fenetre()
+        # Retourner False pour indiquer qu'on veut quitter
+        # Le caller (`afficher_menu_variantes`) fermera la fenêtre et retournera ce résultat
+        return False
     
     return None
 

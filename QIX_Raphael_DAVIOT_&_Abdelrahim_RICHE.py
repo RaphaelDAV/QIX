@@ -631,7 +631,9 @@ if __name__ == "__main__":
     # Lancement du jeu
     if menu:
         config = afficher_menu_variantes()
-        if config[6]:  # start
+        # Si l'utilisateur a cliqué sur Quitter, `config` peut être False/None.
+        # Ne pas tenter de l'indexer dans ce cas.
+        if config and config[6]:  # start
             configurer_game_state(config)
             fenetre()
             jeu()
