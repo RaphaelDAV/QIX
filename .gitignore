@@ -58,3 +58,6 @@ Thumbs.db
 
 # Misc
 *.egg
+
+profiling_top.txt
+profiling.prof
