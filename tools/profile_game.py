@@ -30,8 +30,9 @@ def load_game_module(path: str):
 
 def main():
     parser = argparse.ArgumentParser(description="Profile the QIX game for a few seconds")
-    parser.add_argument("seconds", nargs="?", type=int, default=10, help="Duration to profile (seconds)")
+    parser.add_argument("seconds", nargs="?", type=int, default=10, help="Duration to profile (seconds). Ignored with --interactive")
     parser.add_argument("--no-window", action="store_true", help="Do not open the game window (headless)")
+    parser.add_argument("--interactive", action="store_true", help="Open the game window and let the user play; profile until the game ends")
     args = parser.parse_args()
 
     repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -143,18 +144,9 @@ def main():
     except Exception as e:
         print("Failed to configure game state:", e, file=sys.stderr)
 
-    # Stopper qui fermera la fenêtre proprement après X secondes
-    def stop():
-        try:
-            game.ferme_fenetre_securise()
-        except Exception:
-            pass
-
-    stopper = threading.Timer(args.seconds, stop)
-    stopper.start()
-
     prof = cProfile.Profile()
     prof.enable()
+
     try:
         # Create window unless requested otherwise
         if not args.no_window:
@@ -163,15 +155,31 @@ def main():
             except Exception as e:
                 print("Warning: could not create window:", e, file=sys.stderr)
 
-        # Run the main game loop (will be interrupted by `stop` timer)
-        try:
-            game.jeu()
-        except Exception as e:
-            print("Game loop exited with exception:", e, file=sys.stderr)
+        if args.interactive:
+            # Interactive: let the user play until the game loop ends (jeu returns)
+            try:
+                game.jeu()
+            except Exception as e:
+                print("Game loop exited with exception:", e, file=sys.stderr)
+        else:
+            # Timed run: stop after `seconds` by closing the window
+            def stop():
+                try:
+                    game.ferme_fenetre_securise()
+                except Exception:
+                    pass
+
+            stopper = threading.Timer(args.seconds, stop)
+            stopper.start()
+            try:
+                game.jeu()
+            except Exception as e:
+                print("Game loop exited with exception:", e, file=sys.stderr)
+            finally:
+                stopper.cancel()
 
     finally:
         prof.disable()
-        stopper.cancel()
 
         out_prof = os.path.join(os.getcwd(), "profiling.prof")
         prof.dump_stats(out_prof)
