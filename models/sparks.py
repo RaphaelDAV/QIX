@@ -280,8 +280,19 @@ class SparksManager:
         Args:
             zone_safe (list): Zone safe actuelle
         """
+        # Pré-calculer une version en `set` de `zone_safe` si la zone est grande
+        zone_safe_set = zone_safe if isinstance(zone_safe, set) else None
+        try:
+            zone_len = len(zone_safe)
+        except Exception:
+            zone_len = 0
+        if zone_safe_set is None and zone_len > 50:
+            zone_safe_set = set((p[0], p[1]) for p in zone_safe)
+
         for i, sparks in enumerate(self.sparks_list):
-            if sparks.is_out_of_bounds(zone_safe):
+            # Passer la version set si disponible pour éviter des reconversions coûteuses
+            check_zone = zone_safe_set if zone_safe_set is not None else zone_safe
+            if sparks.is_out_of_bounds(check_zone):
                 # En mode menu avec 2 sparks, ils se téléportent l'un vers l'autre
                 if self.mode_menu and len(self.sparks_list) == 2:
                     other_index = 1 - i  # Avec 2 sparks : 0->1, 1->0
