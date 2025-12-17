@@ -2,7 +2,151 @@ from config.constants import (
     TERRAIN_X_MIN, TERRAIN_Y_MIN, TERRAIN_X_MAX, TERRAIN_Y_MAX,
     ZONE_COIN_DEFAUT, GRILLE_PAS
 )
-from array import array
+from collections.abc import MutableSequence
+from typing import Iterable, List, Tuple, Optional
+
+
+class ZoneGrid(MutableSequence):
+    """Lazy grid-backed sequence of grid-aligned points.
+
+    Behaves like a list of `[x, y]` points aligned on a regular grid
+    between xmin..xmax and ymin..ymax with step `pas`.  The full list
+    is *not* generated until operations that require random access or
+    mutation are used.  Membership checks (`in`) are implemented
+    efficiently without allocating the whole grid.
+    """
+
+    def __init__(self, xmin: int, xmax: int, ymin: int, ymax: int, pas: int):
+        self.xmin = xmin
+        self.xmax = xmax
+        self.ymin = ymin
+        self.ymax = ymax
+        self.pas = pas
+
+        # transient caches / mutation buffers
+        self._removed: set[Tuple[int, int]] = set()
+        self._added: List[List[int]] = []
+        self._cache: Optional[List[List[int]]] = None
+
+    # --- lazy helpers ---
+    def _aligned(self, x: int, y: int) -> bool:
+        return (
+            self.xmin <= x <= self.xmax
+            and self.ymin <= y <= self.ymax
+            and ((x - self.xmin) % self.pas) == 0
+            and ((y - self.ymin) % self.pas) == 0
+        )
+
+    def _generate(self) -> List[List[int]]:
+        """Materialize the full list of points (taking removals and additions into account)."""
+        pts: List[List[int]] = []
+        for y in range(self.ymin, self.ymax + 1, self.pas):
+            for x in range(self.xmin, self.xmax + 1, self.pas):
+                if (x, y) in self._removed:
+                    continue
+                pts.append([x, y])
+        # incorporate added points (preserve order of additions)
+        if self._added:
+            pts.extend(self._added)
+        return pts
+
+    def _ensure_cache(self):
+        if self._cache is None:
+            self._cache = self._generate()
+
+    # --- MutableSequence API ---
+    def __len__(self) -> int:
+        if self._cache is not None:
+            return len(self._cache)
+        # compute size without materializing full list
+        nx = ((self.xmax - self.xmin) // self.pas) + 1
+        ny = ((self.ymax - self.ymin) // self.pas) + 1
+        return nx * ny - len(self._removed) + len(self._added)
+
+    def __getitem__(self, index):
+        self._ensure_cache()
+        return self._cache[index]
+
+    def __setitem__(self, index, value):
+        self._ensure_cache()
+        self._cache[index] = value
+
+    def __delitem__(self, index):
+        self._ensure_cache()
+        del self._cache[index]
+
+    def insert(self, index: int, value):
+        self._ensure_cache()
+        self._cache.insert(index, value)
+
+    def __iter__(self):
+        if self._cache is not None:
+            yield from self._cache
+            return
+        # iterate lazily without allocating full list
+        for y in range(self.ymin, self.ymax + 1, self.pas):
+            for x in range(self.xmin, self.xmax + 1, self.pas):
+                if (x, y) in self._removed:
+                    continue
+                yield [x, y]
+        for p in self._added:
+            yield p
+
+    def __contains__(self, item) -> bool:
+        # accept list/tuple [x,y] or (x,y)
+        try:
+            x, y = (item[0], item[1])
+        except Exception:
+            return False
+        if [x, y] in self._added:
+            return True
+        if (x, y) in self._removed:
+            return False
+        return self._aligned(x, y)
+
+    # convenience methods that mutate
+    def remove(self, value):
+        # prefer marking removal instead of materializing
+        try:
+            x, y = (value[0], value[1])
+        except Exception:
+            raise ValueError("value not in ZoneGrid")
+        if [x, y] in self._added:
+            # remove from additions if present
+            self._added.remove([x, y])
+            if self._cache is not None:
+                try:
+                    self._cache.remove([x, y])
+                except ValueError:
+                    pass
+            return
+        if not self._aligned(x, y):
+            raise ValueError("value not in ZoneGrid")
+        self._removed.add((x, y))
+        if self._cache is not None:
+            try:
+                self._cache.remove([x, y])
+            except ValueError:
+                pass
+
+    def append(self, value):
+        self._added.append([value[0], value[1]])
+        if self._cache is not None:
+            self._cache.append([value[0], value[1]])
+
+    def clear(self):
+        # resetting to empty materializes semantics
+        self._cache = []
+        self._removed.clear()
+        self._added.clear()
+
+    def extend(self, iterable: Iterable[List[int]]):
+        for v in iterable:
+            self.append(v)
+
+    def copy(self) -> List[List[int]]:
+        return list(self)
+
 
 def initialiser_zones_terrain():
     """Initialise toutes les zones de jeu nécessaires au QIX"""
@@ -43,10 +187,15 @@ def initialiser_zones_terrain():
     # Génération des zones safe (bordures)
     _generer_zones_bordures(zones)
 
-    # Génération de la zone de terrain interne
-    _generer_zone_terrain(zones)
+    # Pour la zone de terrain interne, utiliser un objet lazy `ZoneGrid`
+    # qui implémente l'API d'une liste, mais n'alloue pas tout en mémoire
+    # tant que des opérations aléatoires / mutantes ne sont pas requises.
+    zones['zone_terrain'] = ZoneGrid(
+        TERRAIN_X_MIN, TERRAIN_X_MAX, TERRAIN_Y_MIN, TERRAIN_Y_MAX, GRILLE_PAS
+    )
 
     return zones
+
 
 def _generer_zones_bordures(zones):
     """Génère les zones de bordures (zone safe) du terrain de jeu"""
@@ -74,8 +223,11 @@ def _generer_zones_bordures(zones):
         zones['zone_safe'].append(position)
         zones['zone_bas'].append(position)
 
+
 def _generer_zone_terrain(zones):
-    """Génère la zone de terrain interne où le joueur peut tracer"""
+    """Génère la zone de terrain interne où le joueur peut tracer
+    (deprecated — kept for compatibility if code expects a concrete list).
+    """
     for y in range(TERRAIN_Y_MIN, TERRAIN_Y_MAX, GRILLE_PAS):
         for x in range(TERRAIN_X_MIN, TERRAIN_X_MAX, GRILLE_PAS):
             zones['zone_terrain'].append([x, y])

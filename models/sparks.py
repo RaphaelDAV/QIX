@@ -8,7 +8,19 @@ from config.constants import GRILLE_PAS
 
 class Sparks:
     """Classe représentant un ennemi Sparks qui se déplace le long des bordures"""
-    
+    __slots__ = (
+        "x",
+        "y",
+        "taille",
+        "sparks_id",
+        "tag",
+        "vitesse",
+        "deplacement",
+        "sprite",
+        "sprite_invincible",
+        "historique",
+        "compteur",
+    )
     def __init__(self, x, y, taille, sparks_id, vitesse, deplacement, 
                  sprite="ressources/Fantome1.png", direction_initiale="Gauche"):
         """

@@ -7,7 +7,17 @@ from config.constants import GRILLE_PAS
 
 class Qix:
     """Classe représentant l'ennemi Qix qui se déplace dans le terrain"""
-    
+    __slots__ = (
+        "x",
+        "y",
+        "vitesse",
+        "longueur_deplacement",
+        "sprite",
+        "tag",
+        "compteur",
+        "direction_actuelle",
+        "distance_parcourue",
+    )
     def __init__(self, x, y, vitesse, longueur_deplacement=6, sprite="ressources/Fantome_qix.png"):
         """Initialise le Qix"""
         self.x = x

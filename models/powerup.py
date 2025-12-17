@@ -7,7 +7,15 @@ from time import time
 
 class Powerup:
     """Classe représentant un powerup/bonus dans le jeu"""
-    
+    __slots__ = (
+        "x",
+        "y",
+        "powerup_id",
+        "is_active",
+        "tag",
+        "sprite_path",
+        "effect_duration",
+    )
     def __init__(self, x, y, powerup_id, sprite_path, effect_duration=3):
         """
         Initialise un powerup

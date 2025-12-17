@@ -15,7 +15,29 @@ from config.constants import (
 
 class Player:
     """Classe représentant un joueur dans le jeu QIX"""
-    
+    __slots__ = (
+        "x",
+        "y",
+        "taille",
+        "player_id",
+        "sprite_base",
+        "tag",
+        "direction",
+        "vie",
+        "invincible",
+        "vitesse_tracage",
+        "touche_vitesse",
+        "last_speed_change",
+        "historique_positions",
+        "trait_joueur_actuel",
+        "historique_deplacement",
+        "historique_virage",
+        "iteration",
+        "_sprite_paths",
+        "_controls_move",
+        "_controls_trace",
+        "_directions_opposees",
+    )
     def __init__(self, x, y, taille, player_id=1, sprite_base="Pacman1"):
         self.x = x
         self.y = y
