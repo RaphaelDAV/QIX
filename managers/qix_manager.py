@@ -35,6 +35,11 @@ class QixManager:
         self.speed_multiplier = 1
         
         self.randomize_initial_direction()
+        # Cache for expensive zone -> set conversions to avoid rebuilding every call
+        self._cached_zone_safe_key = None
+        self._cached_zone_safe_set = None
+        self._cached_zone_poly_key = None
+        self._cached_zone_poly_set = None
         
     def randomize_initial_direction(self):
         """Randomise la direction initiale du QIX"""
@@ -120,7 +125,8 @@ class QixManager:
         # il faut éviter de constituer de grandes collections intermédiaires : on vérifie les points de passage un par un et on sort tôt.
         from core.game_state import game_state
 
-        # Convert zone lists to tuple-sets for faster membership if they are large
+        # Convert zone lists to tuple-sets for faster membership if they are large.
+        # Cache conversions per-instance using (id(obj), len) as a cheap change-detection key.
         try:
             len_safe = len(zone_safe)
         except Exception:
@@ -130,13 +136,33 @@ class QixManager:
         except Exception:
             len_poly = 0
 
-        zone_safe_set = zone_safe if isinstance(zone_safe, set) else None
-        zone_poly_set = zone_polygone if isinstance(zone_polygone, set) else None
+        # If caller already provided a set, use it directly
+        if isinstance(zone_safe, set):
+            zone_safe_set = zone_safe
+        else:
+            key_safe = (id(zone_safe), len_safe)
+            if self._cached_zone_safe_key == key_safe and self._cached_zone_safe_set is not None:
+                zone_safe_set = self._cached_zone_safe_set
+            elif len_safe > 50:
+                # build and cache
+                zone_safe_set = set((p[0], p[1]) for p in zone_safe)
+                self._cached_zone_safe_key = key_safe
+                self._cached_zone_safe_set = zone_safe_set
+            else:
+                zone_safe_set = None
 
-        if zone_safe_set is None and len_safe > 50:
-            zone_safe_set = set((p[0], p[1]) for p in zone_safe)
-        if zone_poly_set is None and len_poly > 50:
-            zone_poly_set = set((p[0], p[1]) for p in zone_polygone)
+        if isinstance(zone_polygone, set):
+            zone_poly_set = zone_polygone
+        else:
+            key_poly = (id(zone_polygone), len_poly)
+            if self._cached_zone_poly_key == key_poly and self._cached_zone_poly_set is not None:
+                zone_poly_set = self._cached_zone_poly_set
+            elif len_poly > 50:
+                zone_poly_set = set((p[0], p[1]) for p in zone_polygone)
+                self._cached_zone_poly_key = key_poly
+                self._cached_zone_poly_set = zone_poly_set
+            else:
+                zone_poly_set = None
 
         # iterate over bounding square using grid step and return False on first invalid point
         range_x = range(-self.QIX_RADIUS, self.QIX_RADIUS + 1, GRILLE_PAS)
@@ -148,11 +174,22 @@ class QixManager:
                 py = y + dy
                 pt_tuple = (px, py)
 
-                # check in safe or polygon using tuple-set when available else list membership
-                in_safe = (zone_safe_set is not None and pt_tuple in zone_safe_set) or ([px, py] in zone_safe)
-                in_poly = (zone_poly_set is not None and pt_tuple in zone_poly_set) or ([px, py] in zone_polygone)
+                # Prefer set membership when available (O(1)); fall back to list membership only for small zones.
+                if zone_safe_set is not None:
+                    if pt_tuple in zone_safe_set:
+                        return False
+                else:
+                    if [px, py] in zone_safe:
+                        return False
 
-                if in_safe or in_poly or game_state.is_point_in_obstacle(px, py):
+                if zone_poly_set is not None:
+                    if pt_tuple in zone_poly_set:
+                        return False
+                else:
+                    if [px, py] in zone_polygone:
+                        return False
+
+                if game_state.is_point_in_obstacle(px, py):
                     return False
 
         return True
