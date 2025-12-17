@@ -63,24 +63,6 @@ Notes: PyPy peut améliorer sensiblement certaines portions (boucles, code Pytho
   - But: éviter la reconstruction répétée de la `set` pour chaque spark.
   - Risque: nul/minime (changement local, comportement inchangé).
 
-**Recommandations priorisées (coût / bénéfice)**
-- **(1) Convertir les tests fréquents en membership O(1)**: remplacer les occurrences ` [x,y] in zone ` par `tuple(x,y) in zone_set` quand possible.
-  - Implémentation: maintenir pour chaque zone une version `set(map(tuple, zone))` mise à jour quand la zone change.
-- **(2) Uniformiser la conversion set**: utiliser `set(map(tuple, zone))` (plus clair et légèrement plus rapide que `set((p[0], p[1]) for p in zone)`).
-- **(3) Optimiser `is_point_in_obstacle`**: actuellement itère sur tous les obstacles; si beaucoup d'obstacles, utiliser une grille spatiale (buckets) pour réduire le nombre de tests.
-- **(4) Réduire la résolution des tests**: si la logique de collision le permet, tester moins de points (ex: pas chaque pixel, mais par `GRILLE_PAS`).
-- **(5) Tester PyPy**: faible coût d'essai, potentiels gains JIT sans modifier le code.
-- **(6) Mesure continue**: intégrer un petit script `profiling/run_cprofile_project.py` (existant) dans votre workflow pour tester l'impact de chaque changement.
-
-**Prochaines étapes suggérées**
-- Option rapide (je peux appliquer): convertir les autres reconversions répétées en `set(map(tuple, zone))` et propager l'utilisation de `zone_set` aux autres managers.
-- Option moyenne: ajouter une structure `ZoneCache` dans `core/game_state.py` qui expose `get_zone_set(name)` et s'assure que les sets sont invalidés quand la zone est modifiée.
-- Option avancée: prototype d'un index spatial pour obstacles et tests de collision (benchmark avant/après).
-
-**Notes pratiques / pièges**
-- Les caches basés sur `id(obj), len(obj)` (comme dans `QixManager`) sont une bonne approche simple mais fragile si la zone est modifiée in-place sans changement de longueur; il faut invalider le cache dans ces cas.
-- Attention à l'utilisation de `lru_cache` sur des fonctions qui reçoivent des structures mutables (list/dict) — il faut s'assurer que les clés sont immuables ou utiliser des décorateurs personnalisés.
-
 **Fichiers pertinents**
 - `profiling/run_cprofile_project.py` : script headless pour générer `profiling/project.prof`.
 - `profiling/project.prof` : dernier profil enregistré (binaire pstats).
