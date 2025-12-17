@@ -63,14 +63,42 @@ class QixManager:
                        invincibilite1=False, invincibilite2=False):
         """Met à jour et déplace le QIX en diagonal avec rebonds sur les murs"""
         self.speed_multiplier = max(1, longueur_deplacement_QIX)
-        
-        nouveau_x, nouveau_y = self._calculate_new_position_with_boundaries()
-        
-        self._handle_collisions_and_bounces(nouveau_x, nouveau_y, zone_safe, zone_polygone, zone_obstacle)
-        
+        # Calcul du déplacement en une étape (peut être > GRILLE_PAS) -> échantillonner
+        dx = self.velocity_x * self.speed_multiplier
+        dy = self.velocity_y * self.speed_multiplier
+
+        # nombre d'étapes pour échantillonnage : au moins 1
+        max_step = max(1, int(max(abs(dx), abs(dy)) / max(1, GRILLE_PAS)))
+
+        moved = False
+        # conserver la position de départ pour calculer correctement les intermédiaires
+        start_x, start_y = int(self.qix.x), int(self.qix.y)
+
+        # itérer les positions intermédiaires pour éviter le tunneling
+        for step in range(1, max_step + 1):
+            inter_x = int(start_x + (dx * step) / max_step)
+            inter_y = int(start_y + (dy * step) / max_step)
+
+            if self._is_valid_qix_position(inter_x, inter_y, zone_safe, zone_polygone, zone_obstacle):
+                # position intermédiaire valide -> avancer
+                self.qix.x, self.qix.y = inter_x, inter_y
+                moved = True
+                # continuer vers la prochaine étape
+                continue
+            else:
+                # collision détectée sur le chemin -> appliquer rebond et arrêter le déplacement
+                self._bounce_off_obstacles(inter_x, inter_y, zone_safe, zone_polygone, zone_obstacle)
+                moved = True
+                break
+
+        # si aucune étape n'a été donnée (peu probable), on tente une mise à jour normale
+        if not moved:
+            nouveau_x, nouveau_y = self._calculate_new_position_with_boundaries()
+            self._handle_collisions_and_bounces(nouveau_x, nouveau_y, zone_safe, zone_polygone, zone_obstacle)
+
         self._draw_qix(invincibilite1 or invincibilite2)
         self._update_collision_positions()
-        
+
         return True
     
     def _handle_collisions_and_bounces(self, nouveau_x, nouveau_y, zone_safe, zone_polygone, zone_obstacle):
@@ -123,6 +151,9 @@ class QixManager:
     def _is_valid_qix_position(self, x, y, zone_safe, zone_polygone, zone_obstacle):
         """Vérifie si une position est valide pour le QIX"""
         # il faut éviter de constituer de grandes collections intermédiaires : on vérifie les points de passage un par un et on sort tôt.
+        # Vérifier d'abord que la position candidate est à l'intérieur des limites du terrain
+        if x < self.TERRAIN_MIN_X or x > self.TERRAIN_MAX_X or y < self.TERRAIN_MIN_Y or y > self.TERRAIN_MAX_Y:
+            return False
         from core.game_state import game_state
 
         # Convert zone lists to tuple-sets for faster membership if they are large.
@@ -164,9 +195,9 @@ class QixManager:
             else:
                 zone_poly_set = None
 
-        # iterate over bounding square using grid step and return False on first invalid point
-        range_x = range(-self.QIX_RADIUS, self.QIX_RADIUS + 1, GRILLE_PAS)
-        range_y = range(-self.QIX_RADIUS, self.QIX_RADIUS + 1, GRILLE_PAS)
+        # itérer sur le carré englobant en pas de 1 pixel pour éviter les trous
+        range_x = range(-self.QIX_RADIUS, self.QIX_RADIUS + 1, 1)
+        range_y = range(-self.QIX_RADIUS, self.QIX_RADIUS + 1, 1)
 
         for dx in range_x:
             for dy in range_y:
