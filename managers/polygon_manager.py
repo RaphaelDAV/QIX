@@ -214,13 +214,49 @@ class PolygonManager:
         ymin = int(min(p[1] for p in polygone))
         xmax = int(max(p[0] for p in polygone))
         ymax = int(max(p[1] for p in polygone))
-        
-        est = self._est_point_dans_polygone
+
+        # Scanline fill: pour chaque ligne y, calculer intersections avec les arêtes
+        n = len(polygone)
+        xs = [polygone[i][0] for i in range(n)]
+        ys = [polygone[i][1] for i in range(n)]
+
         positions = []
-        for x in range(xmin, xmax + 1, GRILLE_PAS):
-            for y in range(ymin, ymax + 1, GRILLE_PAS):
-                if est(x, y, polygone):
+        # Parcourir chaque ligne horizontale de la grille
+        for y in range(ymin, ymax + 1, GRILLE_PAS):
+            # Collecte des intersections X entre la ligne y et les arêtes du polygone
+            inter_x = []
+            for i in range(n):
+                xi, yi = xs[i], ys[i]
+                xj, yj = xs[(i + 1) % n], ys[(i + 1) % n]
+
+                # Ignorer arêtes horizontales
+                if yi == yj:
+                    continue
+
+                # Vérifier si la ligne y croise l'arête (on prend demi-ouvert [min, max) pour éviter doubles comptages)
+                if (yi <= y < yj) or (yj <= y < yi):
+                    # Calculer l'abscisse d'intersection
+                    x_inter = xi + (y - yi) * (xj - xi) / (yj - yi)
+                    inter_x.append(x_inter)
+
+            if not inter_x:
+                continue
+
+            # Trier les intersections et remplir les intervalles par paire
+            inter_x.sort()
+            for k in range(0, len(inter_x), 2):
+                if k + 1 >= len(inter_x):
+                    break
+                x_start = int(round(inter_x[k]))
+                x_end = int(round(inter_x[k + 1]))
+                # Alignement sur la grille
+                if x_start > x_end:
+                    x_start, x_end = x_end, x_start
+                # Commencer au premier x aligné >= x_start
+                first_x = x_start + ((GRILLE_PAS - ((x_start - xmin) % GRILLE_PAS)) % GRILLE_PAS)
+                for x in range(first_x, x_end + 1, GRILLE_PAS):
                     positions.append([x, y])
+
         return positions
     
     def _est_point_dans_polygone(self, x, y, polygone):
