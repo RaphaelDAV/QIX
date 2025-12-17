@@ -2,6 +2,7 @@
 Module Sparks - Gestion des ennemis Sparks qui se déplacent sur les bordures
 """
 from fltk import image, efface
+import sys
 from config.constants import GRILLE_PAS
 
 
@@ -66,46 +67,61 @@ class Sparks:
             bool: True si le Sparks s'est déplacé, False sinon
         """
         self.compteur += 1
-        
+
         # Ne bouge que tous les X frames selon la vitesse
         if self.compteur % self.vitesse != 0:
             return False
-        
+
         dx = 0
         dy = 0
-        
+
         # Déterminer le prochain mouvement en suivant les bordures
         # Le sens de rotation dépend de la direction initiale configurée
-        direction_preference = self.historique[0]  # Direction initiale depuis la config
-        
+        direction_preference = self.historique[0] if self.historique else "Gauche"
+        last_dir = self.historique[-1] if self.historique else direction_preference
+
+        # Prepare fast membership: accept set or convert when large
+        zone_safe_set = zone_safe if isinstance(zone_safe, set) else None
+        try:
+            zone_len = len(zone_safe)
+        except Exception:
+            zone_len = 0
+        if zone_safe_set is None and zone_len > 50:
+            zone_safe_set = set((p[0], p[1]) for p in zone_safe)
+
+        def contains(px, py):
+            if zone_safe_set is not None:
+                return (px, py) in zone_safe_set
+            return [px, py] in zone_safe
+
         # Si direction preference est "Droite", on privilégie de tourner vers la droite (sens anti-horaire)
         # Si direction preference est "Gauche", on privilégie de tourner vers la gauche (sens horaire)
         if direction_preference == "Droite":
             # Sens anti-horaire : Droite -> Haut -> Gauche -> Bas
-            if [self.x + GRILLE_PAS, self.y] in zone_safe and self.historique[-1] != "Gauche":
+            if contains(self.x + GRILLE_PAS, self.y) and last_dir != "Gauche":
                 dx = self.deplacement
                 self.historique.append("Droite")
-            elif [self.x, self.y - GRILLE_PAS] in zone_safe and self.historique[-1] != "Bas":
+            elif contains(self.x, self.y - GRILLE_PAS) and last_dir != "Bas":
                 dy = -self.deplacement
                 self.historique.append("Haut")
-            elif [self.x - GRILLE_PAS, self.y] in zone_safe and self.historique[-1] != "Droite":
+            elif contains(self.x - GRILLE_PAS, self.y) and last_dir != "Droite":
                 dx = -self.deplacement
                 self.historique.append("Gauche")
-            elif [self.x, self.y + GRILLE_PAS] in zone_safe and self.historique[-1] != "Haut":
+            elif contains(self.x, self.y + GRILLE_PAS) and last_dir != "Haut":
                 dy = self.deplacement
                 self.historique.append("Bas")
         else:  # direction_preference == "Gauche"
             # Sens horaire : Gauche -> Haut -> Droite -> Bas
-            if [self.x - GRILLE_PAS, self.y] in zone_safe and self.historique[-1] != "Droite":
+            if contains(self.x - GRILLE_PAS, self.y) and last_dir != "Droite":
                 dx = -self.deplacement
                 self.historique.append("Gauche")
-            elif [self.x, self.y - GRILLE_PAS] in zone_safe and self.historique[-1] != "Bas":
+            elif contains(self.x, self.y - GRILLE_PAS) and last_dir != "Bas":
                 dy = -self.deplacement
                 self.historique.append("Haut")
-            elif [self.x + GRILLE_PAS, self.y] in zone_safe and self.historique[-1] != "Gauche":
+            elif contains(self.x + GRILLE_PAS, self.y) and last_dir != "Gauche":
                 dx = self.deplacement
                 self.historique.append("Droite")
-            elif [self.x, self.y + GRILLE_PAS] in zone_safe and self.historique[-1] != "Haut":
+            elif contains(self.x, self.y + GRILLE_PAS) and last_dir != "Haut":
                 dy = self.deplacement
                 self.historique.append("Bas")
         
@@ -138,7 +154,8 @@ class Sparks:
         Returns:
             bool: True s'il y a collision
         """
-        return [self.x, self.y] == player_pos
+        # Accept both list and tuple for player_pos
+        return (self.x, self.y) == tuple(player_pos)
     
     def teleport_to(self, other_sparks):
         """
@@ -173,6 +190,15 @@ class Sparks:
         Returns:
             bool: True si le Sparks est hors de la zone safe
         """
+        if isinstance(zone_safe, set):
+            return (self.x, self.y) not in zone_safe
+        try:
+            zone_len = len(zone_safe)
+        except Exception:
+            zone_len = 0
+        if zone_len > 50:
+            zone_safe_set = set((p[0], p[1]) for p in zone_safe)
+            return (self.x, self.y) not in zone_safe_set
         return [self.x, self.y] not in zone_safe
     
     def reset_position(self, x, y, direction="Gauche"):
@@ -224,11 +250,21 @@ class SparksManager:
         # Les sparks ne bougent que si le jeu a commencé (après le clic)
         if not self.jeu_commence:
             return  # Pas de mouvement avant le clic
-            
+
+        # Prepare a set for zone_safe once when large to avoid repeated conversions
+        zone_safe_set = zone_safe if isinstance(zone_safe, set) else None
+        try:
+            zone_len = len(zone_safe)
+        except Exception:
+            zone_len = 0
+        if zone_safe_set is None and zone_len > 50:
+            zone_safe_set = set((p[0], p[1]) for p in zone_safe)
+
         if self.temps_sparks % vitesse == 0:
             for sparks in self.sparks_list:
-                sparks.move(zone_safe, player_invincible)
-        
+                # pass set when available; Sparks.move accepts either
+                sparks.move(zone_safe_set if zone_safe_set is not None else zone_safe, player_invincible)
+
         self.temps_sparks += 1
     
     def commencer_jeu(self):

@@ -22,6 +22,7 @@ class PolygonManager:
         self.lst_couleur = lst_couleur
         self.nb_polygone = 0
         self.surface_polygone = 0.0
+        # helper cache (not persistent between calls) can be used by methods
         
     def peut_creer_polygone(self, player, zone_safe, historique_positions):
         """Vérifie si un joueur peut créer un polygone"""
@@ -38,15 +39,16 @@ class PolygonManager:
     
     def trouver_point_optimal(self, zone_safe, xQIX, yQIX, xAutrePoint, yAutrePoint, 
                              weight_proximite=0.3):
-        """Trouve le point optimal dans la zone safe (loin du QIX, proche du joueur)"""
-        point_optimal = min(
-            zone_safe,
-            key=lambda point: (1 - weight_proximite)
-            * ((point[0] - xQIX) ** 2 + (point[1] - yQIX) ** 2)
-            + weight_proximite
-            * -((point[0] - xAutrePoint) ** 2 + (point[1] - yAutrePoint) ** 2),
-        )
-        return point_optimal
+        """Trouve le point optimal dans la zone safe (loin du QIX, proche du joueur)
+        on utilise les distances au carré pour éviter les opérations sqrt inutiles"""
+        w = weight_proximite
+        def score(point):
+            d_qix = (point[0] - xQIX) ** 2 + (point[1] - yQIX) ** 2
+            d_autre = (point[0] - xAutrePoint) ** 2 + (point[1] - yAutrePoint) ** 2
+            """intention originale : maximiser la distance par rapport au QIX et minimiser la distance par rapport à l'autre point"""
+            return (1 - w) * d_qix - w * d_autre
+
+        return min(zone_safe, key=score)
     
     def trier_zone_horaire(self, zone_safe, point_depart, historique, coin=None, 
                           zone_interieure=None, historique_positions=None):
@@ -56,29 +58,33 @@ class PolygonManager:
         historique.append("Gauche")
         
         x, y = point_depart
-        
+        """on utilise un ensemble de tuples pour des tests d'appartenance rapides (garde la liste zone_safe originale intacte)"""
+        zone_safe_set = set((p[0], p[1]) for p in zone_safe)
+        coin_set = set((p[0], p[1]) for p in coin) if coin is not None else None
+        zone_interieure_set = set((p[0], p[1]) for p in zone_interieure) if zone_interieure is not None else None
+        historique_positions_set = set((p[0], p[1]) for p in historique_positions) if historique_positions is not None else None
+
         for _ in range(len(zone_safe)):
             dx, dy = 0, 0
-            
-            if coin is not None and zone_interieure is not None and historique_positions is not None:
-                if ([x, y] in coin or [x, y] in historique_positions or 
-                    [x, y] in zone_interieure):
+            pt = (x, y)
+            if coin_set is not None and zone_interieure_set is not None and historique_positions_set is not None:
+                if pt in coin_set or pt in historique_positions_set or pt in zone_interieure_set:
                     if [x, y] not in zone_triee:
                         zone_triee.append([x, y])
             else:
                 if [x, y] not in zone_triee:
                     zone_triee.append([x, y])
-            
-            if [x - GRILLE_PAS, y] in zone_safe and historique[-1] != "Droite":
+            """Tests d'appartenance rapides en utilisant un ensemble de tuples"""
+            if (x - GRILLE_PAS, y) in zone_safe_set and historique[-1] != "Droite":
                 dx = -GRILLE_PAS
                 historique.append("Gauche")
-            elif [x, y + GRILLE_PAS] in zone_safe and historique[-1] != "Haut":
+            elif (x, y + GRILLE_PAS) in zone_safe_set and historique[-1] != "Haut":
                 dy = GRILLE_PAS
                 historique.append("Bas")
-            elif [x + GRILLE_PAS, y] in zone_safe and historique[-1] != "Gauche":
+            elif (x + GRILLE_PAS, y) in zone_safe_set and historique[-1] != "Gauche":
                 dx = GRILLE_PAS
                 historique.append("Droite")
-            elif [x, y - GRILLE_PAS] in zone_safe and historique[-1] != "Bas":
+            elif (x, y - GRILLE_PAS) in zone_safe_set and historique[-1] != "Bas":
                 dy = -GRILLE_PAS
                 historique.append("Haut")
             
@@ -110,10 +116,13 @@ class PolygonManager:
             # Les données ont été effacées (probablement après une collision)
             return
         
-        # Remplacer la zone safe par la version triée
+        # Remplacer la zone safe par la version triée (plus efficace via extend)
         zone_safe.clear()
-        for element in zone_safe_triee:
-            zone_safe.append(element)
+        zone_safe.extend(zone_safe_triee)
+
+        # Prepare fast membership and index lookup
+        zone_safe_set = set((p[0], p[1]) for p in zone_safe)
+        index_map = { (p[0], p[1]) : idx for idx, p in enumerate(zone_safe) }
         
         # Vérifier que les points existent dans la zone safe avant de les chercher
         # Pour une ligne droite entre deux bords, on doit chercher les points les plus proches
@@ -121,24 +130,26 @@ class PolygonManager:
         point_fin = dernier_point
         
         # Si les points exacts ne sont pas dans zone_safe, chercher les plus proches
-        if premier_point not in zone_safe:
+        if tuple(premier_point) not in zone_safe_set:
             point_debut = self._trouver_point_le_plus_proche(premier_point, zone_safe)
-        if dernier_point not in zone_safe:
+        if tuple(dernier_point) not in zone_safe_set:
             point_fin = self._trouver_point_le_plus_proche(dernier_point, zone_safe)
         
         # Si on ne trouve toujours pas les points, essayer avec les premiers et derniers éléments du trait
-        if point_debut not in zone_safe and len(trait_joueur) > 0:
+        if tuple(point_debut) not in zone_safe_set and len(trait_joueur) > 0:
             point_debut = self._trouver_point_le_plus_proche(trait_joueur[0], zone_safe)
-        if point_fin not in zone_safe and len(trait_joueur) > 0:
+        if tuple(point_fin) not in zone_safe_set and len(trait_joueur) > 0:
             point_fin = self._trouver_point_le_plus_proche(trait_joueur[-1], zone_safe)
             
         # Dernière vérification - si on ne trouve toujours rien, abandonner
-        if point_debut not in zone_safe or point_fin not in zone_safe:
+        if tuple(point_debut) not in zone_safe_set or tuple(point_fin) not in zone_safe_set:
             return
         
-        # Trouver les indices des points de début et fin
-        coin1_poly = zone_safe.index(point_debut)
-        coin2_poly = zone_safe.index(point_fin)
+        # Trouver les indices des points de début et fin via index_map
+        coin1_poly = index_map.get((point_debut[0], point_debut[1]))
+        coin2_poly = index_map.get((point_fin[0], point_fin[1]))
+        if coin1_poly is None or coin2_poly is None:
+            return
         
         # Supprimer la partie de zone safe entre les deux points et ajouter le trait
         if coin2_poly > coin1_poly:
@@ -181,15 +192,12 @@ class PolygonManager:
         """
         if not zone_safe:
             return point_cherche
-            
-        distances = []
-        for point in zone_safe:
-            distance = ((point[0] - point_cherche[0]) ** 2 + 
-                       (point[1] - point_cherche[1]) ** 2) ** 0.5
-            distances.append((distance, point))
-        
-        # Retourner le point avec la distance minimale
-        return min(distances, key=lambda x: x[0])[1]
+
+        # Use squared distance to avoid sqrt and reduce allocations
+        def sqdist(p):
+            return (p[0] - point_cherche[0]) ** 2 + (p[1] - point_cherche[1]) ** 2
+
+        return min(zone_safe, key=sqdist)
     
     def generer_positions_interieures(self, polygone):
         """
@@ -207,15 +215,13 @@ class PolygonManager:
         xmax = int(max(p[0] for p in polygone))
         ymax = int(max(p[1] for p in polygone))
         
-        positions_interieures = []
-        
-        # Parcourir toutes les positions possibles
+        est = self._est_point_dans_polygone
+        positions = []
         for x in range(xmin, xmax + 1, GRILLE_PAS):
             for y in range(ymin, ymax + 1, GRILLE_PAS):
-                if self._est_point_dans_polygone(x, y, polygone):
-                    positions_interieures.append([x, y])
-        
-        return positions_interieures
+                if est(x, y, polygone):
+                    positions.append([x, y])
+        return positions
     
     def _est_point_dans_polygone(self, x, y, polygone):
         """
@@ -336,31 +342,17 @@ class PolygonManager:
         # Obstacles prédéfinis
         if obstacles_info.get('predefini', False):
             matobstacles = obstacles_info.get('matobstacles', [])
-            for i in range(len(matobstacles)):
-                rectangle(
-                    matobstacles[i][0],
-                    matobstacles[i][1],
-                    matobstacles[i][0] + matobstacles[i][2],
-                    matobstacles[i][1] + matobstacles[i][2],
-                    "gray",
-                    "gray",
-                    tag="obstacle",
-                )
+            for mat in matobstacles:
+                x0, y0, taille = mat[0], mat[1], mat[2]
+                rectangle(x0, y0, x0 + taille, y0 + taille, "gray", "gray", tag="obstacle")
         
         # Obstacles aléatoires
         if obstacles_info.get('aleatoire', False):
             obstacles = obstacles_info.get('obstacles', [])
             for idx, obs in enumerate(obstacles, 1):
                 efface(f"obstacle{idx}")
-                rectangle(
-                    obs['x'],
-                    obs['y'],
-                    obs['x'] + obs['taille'],
-                    obs['y'] + obs['taille'],
-                    "gray",
-                    "gray",
-                    tag=f"obstacle{idx}",
-                )
+                x0, y0, t = obs['x'], obs['y'], obs['taille']
+                rectangle(x0, y0, x0 + t, y0 + t, "gray", "gray", tag=f"obstacle{idx}")
     
     def calculer_surface_recouverte(self, zone_polygone, nb_positions_totales):
         """

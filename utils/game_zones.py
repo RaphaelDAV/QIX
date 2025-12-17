@@ -2,6 +2,7 @@ from config.constants import (
     TERRAIN_X_MIN, TERRAIN_Y_MIN, TERRAIN_X_MAX, TERRAIN_Y_MAX,
     ZONE_COIN_DEFAUT, GRILLE_PAS
 )
+from array import array
 
 def initialiser_zones_terrain():
     """Initialise toutes les zones de jeu nécessaires au QIX"""
@@ -35,13 +36,16 @@ def initialiser_zones_terrain():
         'trait_joueur_actuel': [],
         'position_qix': []
     }
-    
+
+    # compact storage for obstacles (kept as list of tuples)
+    zones['zone_obstacle'] = zones.get('zone_obstacle', [])
+
     # Génération des zones safe (bordures)
     _generer_zones_bordures(zones)
-    
+
     # Génération de la zone de terrain interne
     _generer_zone_terrain(zones)
-    
+
     return zones
 
 def _generer_zones_bordures(zones):

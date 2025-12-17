@@ -21,71 +21,71 @@ class PowerupManager(BasePowerupManager):
             "player2_collected": None,
             "color_effects": self.color_effects[1].copy()
         }
-        
-        # Vérification joueur 1
-        collected_id = self.check_player_collisions(player1)
-        if collected_id:
-            results["player1_collected"] = collected_id
-            player1.set_invincible(True)
-        
-        # Vérification joueur 2 (si mode multijoueur)
+
+        """on collecte les collisions (effectuer les importations/interactions une seule fois par joueur)"""
+        collected1 = self.check_player_collisions(player1)
+        if collected1:
+            results["player1_collected"] = collected1
+
+        collected2 = None
         if mode_deux and player2:
-            collected_id = self.check_player_collisions(player2)
-            if collected_id:
-                results["player2_collected"] = collected_id
-                player2.set_invincible(True)
-                results["color_effects"] = self.color_effects[2].copy()
-        
-        # Mise à jour des statuts d'invincibilité
+            collected2 = self.check_player_collisions(player2)
+            if collected2:
+                results["player2_collected"] = collected2
+
+        # Mise à jour des états d'invincibilité en fonction de timers/state 
         player1.set_invincible(self.is_player_invincible(1))
         if player2:
             player2.set_invincible(self.is_player_invincible(2))
-        
+
         # Mise à jour de l'affichage
         self.update_invincibility_display(1, mode_deux)
         if mode_deux:
             self.update_invincibility_display(2, mode_deux)
-        
-        if not mode_deux and not self.is_player_invincible(1):
+
+       # on détermine les effets de couleur : priorité au joueur 2 en mode multijoueur
+        if mode_deux and self.is_player_invincible(2):
+            results["color_effects"] = self.color_effects[2].copy()
+        elif self.is_player_invincible(1):
             results["color_effects"] = self.color_effects[1].copy()
-        
+        else:
+            results["color_effects"] = self.color_effects[1].copy()
+
         return results
     
     def update_invincibility_display(self, player_id, mode_deux=False):
         """Met à jour l'affichage de l'invincibilité"""
         tag = f"Invincibilite{player_id}"
-        
-        if self.is_player_invincible(player_id):
-            if mode_deux:
-                positions = {
-                    1: (680, 400),
-                    2: (680, 710)
-                }
-            else:
-                positions = {1: (50, 170)}
-            
-            if player_id in positions:
-                x, y = positions[player_id]
-                texte(
-                    x, y, "Invincibilite",
-                    couleur="yellow", taille=16,
-                    police="Copperplate Gothic Bold",
-                    tag=tag
-                )
-        else:
+        inv = self.is_player_invincible(player_id)
+
+        # Efface le tag précédent pour éviter les textes superposés en double
+        if not inv:
             efface(tag)
+            return
+
+        # Positions pour l'affichage
+        if mode_deux:
+            positions = {1: (680, 400), 2: (680, 710)}
+        else:
+            positions = {1: (50, 170)}
+
+        pos = positions.get(player_id)
+        if not pos:
+            return
+
+        x, y = pos
+        efface(tag)
+        texte(x, y, "Invincibilite", couleur="yellow", taille=16,
+              police="Copperplate Gothic Bold", tag=tag)
     
     def create_powerups_from_config(self, positions_pommes, sprites_fruits):
         """Crée les powerups à partir de la configuration existante"""
         from fltk import image
-        
-        for i, (pomme_x, pomme_y) in enumerate(positions_pommes):
-            if i < len(sprites_fruits):
-                image(
-                    pomme_x, pomme_y, sprites_fruits[i],
-                    largeur=20, hauteur=20, tag=f"pomme{i+1}"
-                )
-                
-                from models.powerup import Powerup
-                powerup = Powerup(pomme_x, pomme_y, i + 1, sprites_fruits[i])
-                self.add_powerup(powerup)
+        from models.powerup import Powerup
+
+        # Associe les positions avec les sprites disponibles (s'arrête au plus court)
+        for i, (pos, sprite) in enumerate(zip(positions_pommes, sprites_fruits), start=1):
+            pomme_x, pomme_y = pos
+            image(pomme_x, pomme_y, sprite, largeur=20, hauteur=20, tag=f"pomme{i}")
+            powerup = Powerup(pomme_x, pomme_y, i, sprite)
+            self.add_powerup(powerup)

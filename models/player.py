@@ -1,14 +1,15 @@
 """Module Player - Gestion du joueur dans le jeu QIX"""
-from fltk import image, efface
+from fltk import image, efface, texte, ligne
+import time
 from config.constants import (
-    VIES_INITIALES, 
-    VITESSE_TRACAGE_LENTE, 
+    VIES_INITIALES,
+    VITESSE_TRACAGE_LENTE,
     VITESSE_TRACAGE_RAPIDE,
     GRILLE_PAS,
     TERRAIN_X_MIN,
     TERRAIN_X_MAX,
     TERRAIN_Y_MIN,
-    TERRAIN_Y_MAX
+    TERRAIN_Y_MAX,
 )
 
 
@@ -37,26 +38,63 @@ class Player:
         self.historique_deplacement = []
         self.historique_virage = []
         self.iteration = 0
+        # Precompute frequently used mappings to avoid rebuilding inside loops
+        base = f"ressources/{self.sprite_base}_{{}}.png"
+        self._sprite_paths = {
+            "haut": base.format("haut"),
+            "bas": base.format("bas"),
+            "gauche": base.format("gauche"),
+            "droite": base.format("droite"),
+        }
+
+        # Controls caches for move and tracing to avoid rebuilding dicts each frame
+        if self.player_id == 1:
+            self._controls_move = {
+                "Left": (-1, 0, "gauche"),
+                "Right": (1, 0, "droite"),
+                "Down": (0, 1, "bas"),
+                "Up": (0, -1, "haut"),
+            }
+            self._controls_trace = {
+                "Left": (-1, 0, "Gauche"),
+                "Right": (1, 0, "Droite"),
+                "Down": (0, 1, "Bas"),
+                "Up": (0, -1, "Haut"),
+            }
+        else:
+            self._controls_move = {
+                "q": (-1, 0, "gauche"),
+                "d": (1, 0, "droite"),
+                "s": (0, 1, "bas"),
+                "z": (0, -1, "haut"),
+            }
+            self._controls_trace = {
+                "q": (-1, 0, "Gauche"),
+                "d": (1, 0, "Droite"),
+                "s": (0, 1, "Bas"),
+                "z": (0, -1, "Haut"),
+            }
+
+        self._directions_opposees = {
+            "Gauche": "Droite",
+            "Droite": "Gauche",
+            "Haut": "Bas",
+            "Bas": "Haut",
+        }
         
     def draw(self, direction=None):
         """Dessine le joueur à sa position actuelle"""
         if direction:
             self.direction = direction
-            
-        sprite_map = {
-            "haut": f"ressources/{self.sprite_base}_haut.png",
-            "bas": f"ressources/{self.sprite_base}_bas.png",
-            "gauche": f"ressources/{self.sprite_base}_gauche.png",
-            "droite": f"ressources/{self.sprite_base}_droite.png"
-        }
-        
-        sprite = sprite_map.get(self.direction, sprite_map["haut"])
-        
+        sprite = self._sprite_paths.get(self.direction, self._sprite_paths["haut"])
+
         image(
-            self.x, self.y, sprite, 
-            largeur=self.taille + GRILLE_PAS, 
-            hauteur=self.taille + GRILLE_PAS, 
-            tag=self.tag
+            self.x,
+            self.y,
+            sprite,
+            largeur=self.taille + GRILLE_PAS,
+            hauteur=self.taille + GRILLE_PAS,
+            tag=self.tag,
         )
     
     def move(self, dx, dy):
@@ -85,6 +123,14 @@ class Player:
     
     def is_in_zone(self, zone):
         """Vérifie si le joueur est dans une zone donnée"""
+        # zone may be a name (str) or a list of [x,y]
+        if isinstance(zone, str):
+            try:
+                from core.game_state import game_state
+                z = game_state.get_zone(zone)
+            except Exception:
+                return False
+            return [self.x, self.y] in z
         return [self.x, self.y] in zone
     
     def lose_life(self):
@@ -106,34 +152,20 @@ class Player:
     def handle_input(self, input_handler, zone_safe, vitesse_deplacement):
         """Gère les entrées du joueur et calcule le déplacement"""
         dx, dy = 0, 0
-        
-        if self.player_id == 1:
-            controls = {
-                "Left": (-vitesse_deplacement, 0, "gauche"),
-                "Right": (vitesse_deplacement, 0, "droite"),
-                "Down": (0, vitesse_deplacement, "bas"),
-                "Up": (0, -vitesse_deplacement, "haut")
-            }
-        else:
-            controls = {
-                "q": (-vitesse_deplacement, 0, "gauche"),
-                "d": (vitesse_deplacement, 0, "droite"),
-                "s": (0, vitesse_deplacement, "bas"),
-                "z": (0, -vitesse_deplacement, "haut")
-            }
-        
-        for key, (vel_x, vel_y, direction) in controls.items():
+
+        for key, (dir_x, dir_y, direction) in self._controls_move.items():
             if input_handler(key):
-                step_x = GRILLE_PAS if vel_x > 0 else -GRILLE_PAS if vel_x < 0 else 0
-                step_y = GRILLE_PAS if vel_y > 0 else -GRILLE_PAS if vel_y < 0 else 0
+                step_x = GRILLE_PAS if dir_x > 0 else -GRILLE_PAS if dir_x < 0 else 0
+                step_y = GRILLE_PAS if dir_y > 0 else -GRILLE_PAS if dir_y < 0 else 0
                 new_x = self.x + step_x
                 new_y = self.y + step_y
-                
+
+                # simple list membership test against provided zone_safe
                 if [new_x, new_y] in zone_safe:
                     dx, dy = step_x, step_y
                     self.direction = direction
                 break
-        
+
         return dx, dy
     
     def handle_tracing(self, input_handler, space_key, vitesse_tracage, zone_terrain, zone_polygone, zone_obstacle):
@@ -163,68 +195,69 @@ class Player:
             "Bas": "Haut"
         }
         
-        if input_handler(space_key) and any(input_handler(key) for key in controls.keys()):
-            
+        if input_handler(space_key) and any(input_handler(k) for k in self._controls_trace.keys()):
+
             if self.iteration == 0:
                 self.historique_positions.append([self.x, self.y])
                 self.iteration += 1
-            
-            for key, (vel_x, vel_y, direction) in controls.items():
+
+            step = GRILLE_PAS * (int(vitesse_tracage / GRILLE_PAS))
+
+            for key, (dir_x, dir_y, direction) in self._controls_trace.items():
                 if input_handler(key):
-                    # Vérification anti-demi-tour : empêcher de revenir dans la direction opposée
-                    if (len(self.historique_deplacement) > 0 and 
-                        self.historique_deplacement[-1] in directions_opposees and
-                        direction == directions_opposees[self.historique_deplacement[-1]]):
-                        continue  # Ignorer cette direction (demi-tour interdit)
-                    
-                    step = GRILLE_PAS * (int(vitesse_tracage / GRILLE_PAS))
-                    proposed_x = self.x + (step if vel_x > 0 else -step if vel_x < 0 else 0)
-                    proposed_y = self.y + (step if vel_y > 0 else -step if vel_y < 0 else 0)
-                    
-                    # Ajustement pour les bordures : si la position proposée sort du terrain,
-                    # ajuster pour s'arrêter exactement à la bordure
+                    # Anti demi-tour
+                    if (
+                        self.historique_deplacement
+                        and self.historique_deplacement[-1] in self._directions_opposees
+                        and direction == self._directions_opposees[self.historique_deplacement[-1]]
+                    ):
+                        continue
+
+                    proposed_x = self.x + (step if dir_x > 0 else -step if dir_x < 0 else 0)
+                    proposed_y = self.y + (step if dir_y > 0 else -step if dir_y < 0 else 0)
+
                     new_x = proposed_x
                     new_y = proposed_y
-                    
-                    # Vérifier les limites du terrain et ajuster si nécessaire
-                    if vel_x > 0:  # Mouvement vers la droite
-                        if proposed_x > TERRAIN_X_MAX:
-                            new_x = TERRAIN_X_MAX
-                    elif vel_x < 0:  # Mouvement vers la gauche
-                        if proposed_x < TERRAIN_X_MIN:
-                            new_x = TERRAIN_X_MIN
-                            
-                    if vel_y > 0:  # Mouvement vers le bas
-                        if proposed_y > TERRAIN_Y_MAX:
-                            new_y = TERRAIN_Y_MAX
-                    elif vel_y < 0:  # Mouvement vers le haut
-                        if proposed_y < TERRAIN_Y_MIN:
-                            new_y = TERRAIN_Y_MIN
-                    
+
+                    # Clamp to terrain bounds
+                    if dir_x > 0 and proposed_x > TERRAIN_X_MAX:
+                        new_x = TERRAIN_X_MAX
+                    elif dir_x < 0 and proposed_x < TERRAIN_X_MIN:
+                        new_x = TERRAIN_X_MIN
+
+                    if dir_y > 0 and proposed_y > TERRAIN_Y_MAX:
+                        new_y = TERRAIN_Y_MAX
+                    elif dir_y < 0 and proposed_y < TERRAIN_Y_MIN:
+                        new_y = TERRAIN_Y_MIN
+
                     check_pos = [new_x, new_y]
-                    # Vérification supplémentaire : ne pas revenir sur une position déjà tracée
+                    # membership checks against passed-in zone lists
                     from core.game_state import game_state
-                    if (check_pos in zone_terrain and 
-                        check_pos not in zone_polygone and 
-                        not game_state.is_point_in_obstacle(new_x, new_y) and
-                        check_pos not in self.trait_joueur_actuel):  # Empêcher de revenir sur le trait
-                        dx, dy = vel_x, vel_y
-                        
-                        from fltk import ligne
+                    if (
+                        check_pos in zone_terrain
+                        and check_pos not in zone_polygone
+                        and not game_state.is_point_in_obstacle(new_x, new_y)
+                        and check_pos not in self.trait_joueur_actuel
+                    ):
+                        dx, dy = dir_x * vitesse_tracage, dir_y * vitesse_tracage
+
+                        tag = f"trait_joueur{self.player_id if self.player_id != 1 else ''}"
                         if direction == "Haut":
-                            ligne(self.x, self.y - step, self.x, self.y, "white", 2, tag=f"trait_joueur{self.player_id if self.player_id != 1 else ''}")
+                            ligne(self.x, self.y - step, self.x, self.y, "white", 2, tag=tag)
                         else:
-                            ligne(self.x, self.y, new_x, new_y, "white", 2, tag=f"trait_joueur{self.player_id if self.player_id != 1 else ''}")
-                        
+                            ligne(self.x, self.y, new_x, new_y, "white", 2, tag=tag)
+
                         self.historique_virage.append([direction, [self.x, self.y]])
                         self.historique_deplacement.append(direction)
-                        
-                        if (len(self.historique_virage) >= 2 and 
-                            self.historique_virage[-1][0] != self.historique_virage[-2][0]):
+
+                        if (
+                            len(self.historique_virage) >= 2
+                            and self.historique_virage[-1][0] != self.historique_virage[-2][0]
+                        ):
                             self.historique_positions.append([self.x, self.y])
-                        
+
                         break
-            
+
             if [self.x, self.y] not in self.trait_joueur_actuel:
                 self.trait_joueur_actuel.append([self.x, self.y])
         
@@ -232,34 +265,45 @@ class Player:
     
     def handle_speed_change(self, touche_pressee, zone_safe, vitesse_enabled=True):
         """Gère le changement de vitesse de traçage du joueur"""
-        from fltk import texte, efface
-        import time
-        
         if not vitesse_enabled:
             return False
-            
+
         current_time = time.time()
         if current_time - self.last_speed_change < 1.0:
             return False
-            
+
         if touche_pressee(self.touche_vitesse) and [self.x, self.y] in zone_safe:
             self.last_speed_change = current_time
-            
+
             speed_tag = f"vitesse{self.player_id if self.player_id > 1 else ''}"
             efface(speed_tag)
-            
+
             display_positions = {1: 475, 2: 600}
             x_pos = display_positions.get(self.player_id, 475)
-            
+
             if self.vitesse_tracage == 5:
                 self.vitesse_tracage = 10
-                texte(x_pos, 170, "Rapide", couleur="red", taille=15,
-                      police="Copperplate Gothic Bold", tag=speed_tag)
+                texte(
+                    x_pos,
+                    170,
+                    "Rapide",
+                    couleur="red",
+                    taille=15,
+                    police="Copperplate Gothic Bold",
+                    tag=speed_tag,
+                )
             elif self.vitesse_tracage == 10:
                 self.vitesse_tracage = 5
-                texte(x_pos, 170, "Lente", couleur="green", taille=15,
-                      police="Copperplate Gothic Bold", tag=speed_tag)
-            
+                texte(
+                    x_pos,
+                    170,
+                    "Lente",
+                    couleur="green",
+                    taille=15,
+                    police="Copperplate Gothic Bold",
+                    tag=speed_tag,
+                )
+
             return True
-            
+
         return False

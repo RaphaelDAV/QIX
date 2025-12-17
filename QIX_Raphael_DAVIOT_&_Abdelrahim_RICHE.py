@@ -15,6 +15,7 @@
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 from fltk import *
 from time import sleep
+import sys
 
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 # CONFIGURATION & CONSTANTES
@@ -130,9 +131,11 @@ def initialiser_obstacles():
             rectangle(
                 obstacles[0], obstacles[1],
                 obstacles[0] + obstacles[2], obstacles[1] + obstacles[2],
-                "gray", "gray", tag="obstacle"
+                "gray", "gray", tag=("obstacle")
             )
             # Stocker seulement les coordonnées du rectangle [x, y, taille]
+            zone_obstacle.append([obstacles[0], obstacles[1], obstacles[2]])
+            # keep simple list of obstacles (no compact array)
             zone_obstacle.append([obstacles[0], obstacles[1], obstacles[2]])
     
     return matobstacles
@@ -183,9 +186,9 @@ def jeu():
     player1, player2, taille, vitesse_deplacement = player_manager.initialiser_joueurs()
     xQIX, yQIX, vitesse_QIX, longueur_deplacement_QIX, couleur_sparks, vitesse_sparks = configurer_niveau(niveau_actuel)
     
-    largeur = (TERRAIN_X_MAX - TERRAIN_X_MIN) / GRILLE_PAS
-    hauteur = (TERRAIN_Y_MAX - TERRAIN_Y_MIN) / GRILLE_PAS
-    nb_positions = largeur * hauteur
+    largeur = (TERRAIN_X_MAX - TERRAIN_X_MIN) // GRILLE_PAS
+    hauteur = (TERRAIN_Y_MAX - TERRAIN_Y_MIN) // GRILLE_PAS
+    nb_positions = int(largeur * hauteur)
     
     # État d'invincibilité
     game_state.invincibilite1 = False
@@ -242,10 +245,15 @@ def jeu():
         player2.touche_vitesse = touche_V2
 
     # Message de démarrage
-    texte(300, 475, "CLIQUEZ POUR COMMENCER", couleur="white", taille=20, police="Copperplate Gothic Bold", ancrage="center", tag="commencer")
+    texte(300, 475, "CLIQUEZ POUR COMMENCER", couleur="white", taille=20, police="Copperplate Gothic Bold", ancrage="center", tag=sys.intern("commencer"))
 
     # État boucle
     run = True
+
+    # Cache hot functions locally to avoid global lookups in the main loop
+    _donne_ev = donne_ev
+    _type_ev = type_ev
+    _touche_pressee = touche_pressee
 
     # ═════════════════════════════════════════════════════════════════════════════════════════════════════════════
     # BOUCLE PRINCIPALE DU JEU
@@ -255,11 +263,11 @@ def jeu():
         # ÉVÉNEMENTS
         # ─────────────────────────────────────────────────────────────────────────────────────────────────────────
         
-        ev = donne_ev(); tev = type_ev(ev)
+        ev = _donne_ev(); tev = _type_ev(ev)
         if tev == "ClicGauche":
             efface("commencer")
             sparks_manager.commencer_jeu()  # Commencer le jeu dans tous les modes
-        if touche_pressee("Escape"):
+        if _touche_pressee("Escape"):
             ferme_fenetre()
             run = False
             continue
@@ -267,16 +275,16 @@ def jeu():
        # ─────────────────────────────────────────────────────────────────────────────────────────────────────────
         # DÉPLACEMENT SUR BORDURES (ZONE SAFE)
         # ─────────────────────────────────────────────────────────────────────────────────────────────────────────
-        dx, dy = player1.handle_input(touche_pressee, zone_safe, vitesse_deplacement)
+        dx, dy = player1.handle_input(_touche_pressee, zone_safe, vitesse_deplacement)
         dx2, dy2 = 0, 0
         if deux and player2 is not None:
-            dx2, dy2 = player2.handle_input(touche_pressee, zone_safe, vitesse_deplacement)
+            dx2, dy2 = player2.handle_input(_touche_pressee, zone_safe, vitesse_deplacement)
 
         # ─────────────────────────────────────────────────────────────────────────────────────────────────────────
         # TRAÇAGE DANS LE TERRAIN (ZONE DANGEREUSE)
         # ─────────────────────────────────────────────────────────────────────────────────────────────────────────
         dx_trace, dy_trace = player1.handle_tracing(
-            touche_pressee, touche_espace, vitesse_tracage,
+            _touche_pressee, touche_espace, vitesse_tracage,
             zone_terrain, zone_polygone, zone_obstacle
         )
         if dx_trace or dy_trace:
@@ -293,7 +301,7 @@ def jeu():
 
         if deux and player2 is not None:
             dx2_trace, dy2_trace = player2.handle_tracing(
-                touche_pressee, touche_espace2, vitesse_tracage2,
+                _touche_pressee, touche_espace2, vitesse_tracage2,
                 zone_terrain, zone_polygone, zone_obstacle
             )
             if dx2_trace or dy2_trace:
@@ -335,12 +343,12 @@ def jeu():
         # ─────────────────────────────────────────────────────────────────────────────────────────────────────────
         if vitesse:
             # Gestion du changement de vitesse pour le joueur 1
-            if player1.handle_speed_change(touche_pressee, zone_safe, vitesse):
+            if player1.handle_speed_change(_touche_pressee, zone_safe, vitesse):
                 vitesse_tracage = player1.vitesse_tracage
             
             # Gestion du changement de vitesse pour le joueur 2 (si en mode deux joueurs)
             if deux and player2 is not None:
-                if player2.handle_speed_change(touche_pressee, zone_safe, vitesse):
+                if player2.handle_speed_change(_touche_pressee, zone_safe, vitesse):
                     vitesse_tracage2 = player2.vitesse_tracage
 
 

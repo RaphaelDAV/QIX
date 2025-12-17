@@ -26,6 +26,7 @@ class QixManager:
         """Initialise le gestionnaire QIX"""
         self.qix = qix_instance
         self.position_qix = []
+        self.position_qix_set = set()
         self.sprite_normal = SPRITE_QIX
         self.sprite_invincible = SPRITE_SPARKS_VULNERABLE
         
@@ -116,28 +117,44 @@ class QixManager:
     
     def _is_valid_qix_position(self, x, y, zone_safe, zone_polygone, zone_obstacle):
         """Vérifie si une position est valide pour le QIX"""
-        check_points = set()
-        
-        for dx in range(-self.QIX_RADIUS, self.QIX_RADIUS + 1, GRILLE_PAS):
-            for dy in range(-self.QIX_RADIUS, self.QIX_RADIUS + 1, GRILLE_PAS):
-                check_points.add((x + dx, y + dy))
-        
-        for edge_x in [x - self.QIX_RADIUS, x + self.QIX_RADIUS]:
-            for edge_y in range(int(y - self.QIX_RADIUS), int(y + self.QIX_RADIUS + 1)):
-                check_points.add((edge_x, edge_y))
-        
-        for edge_y in [y - self.QIX_RADIUS, y + self.QIX_RADIUS]:
-            for edge_x in range(int(x - self.QIX_RADIUS), int(x + self.QIX_RADIUS + 1)):
-                check_points.add((edge_x, edge_y))
-        
-        # Vérification optimisée avec conversion directe
+        # il faut éviter de constituer de grandes collections intermédiaires : on vérifie les points de passage un par un et on sort tôt.
         from core.game_state import game_state
-        for point in check_points:
-            point_list = [point[0], point[1]]
-            if (point_list in zone_safe or point_list in zone_polygone or 
-                game_state.is_point_in_obstacle(point[0], point[1])):
-                return False
-        
+
+        # Convert zone lists to tuple-sets for faster membership if they are large
+        try:
+            len_safe = len(zone_safe)
+        except Exception:
+            len_safe = 0
+        try:
+            len_poly = len(zone_polygone)
+        except Exception:
+            len_poly = 0
+
+        zone_safe_set = zone_safe if isinstance(zone_safe, set) else None
+        zone_poly_set = zone_polygone if isinstance(zone_polygone, set) else None
+
+        if zone_safe_set is None and len_safe > 50:
+            zone_safe_set = set((p[0], p[1]) for p in zone_safe)
+        if zone_poly_set is None and len_poly > 50:
+            zone_poly_set = set((p[0], p[1]) for p in zone_polygone)
+
+        # iterate over bounding square using grid step and return False on first invalid point
+        range_x = range(-self.QIX_RADIUS, self.QIX_RADIUS + 1, GRILLE_PAS)
+        range_y = range(-self.QIX_RADIUS, self.QIX_RADIUS + 1, GRILLE_PAS)
+
+        for dx in range_x:
+            for dy in range_y:
+                px = x + dx
+                py = y + dy
+                pt_tuple = (px, py)
+
+                # check in safe or polygon using tuple-set when available else list membership
+                in_safe = (zone_safe_set is not None and pt_tuple in zone_safe_set) or ([px, py] in zone_safe)
+                in_poly = (zone_poly_set is not None and pt_tuple in zone_poly_set) or ([px, py] in zone_polygone)
+
+                if in_safe or in_poly or game_state.is_point_in_obstacle(px, py):
+                    return False
+
         return True
     
     def _draw_qix(self, player_invincible=False):
@@ -166,26 +183,35 @@ class QixManager:
         Optimisé pour éviter les répétitions
         """
         self.position_qix.clear()
-        
-        # Générer le périmètre du QIX de manière optimisée
+        self.position_qix_set.clear()
+
         x_min, x_max = int(self.qix.x - self.QIX_RADIUS), int(self.qix.x + self.QIX_RADIUS)
         y_min, y_max = int(self.qix.y - self.QIX_RADIUS), int(self.qix.y + self.QIX_RADIUS)
-        
+
         # Bords horizontaux (haut et bas)
         for i in range(x_min, x_max):
-            self.position_qix.extend([[i, y_min], [i, y_max]])
-            
+            a = [i, y_min]
+            b = [i, y_max]
+            self.position_qix.extend((a, b))
+            self.position_qix_set.add((i, y_min))
+            self.position_qix_set.add((i, y_max))
+
         # Bords verticaux (gauche et droite)
         for i in range(y_min, y_max):
-            self.position_qix.extend([[x_min, i], [x_max, i]])
+            a = [x_min, i]
+            b = [x_max, i]
+            self.position_qix.extend((a, b))
+            self.position_qix_set.add((x_min, i))
+            self.position_qix_set.add((x_max, i))
     
     def check_collision_with_trail(self, trail, player_invincible=False):
         """Vérifie si le QIX touche le trait d'un joueur"""
         if player_invincible:
             return False
-            
+        # Use set membership for faster checks
+        pos_set = self.position_qix_set
         for element in trail:
-            if element in self.position_qix:
+            if tuple(element) in pos_set:
                 return True
         return False
     
@@ -194,8 +220,7 @@ class QixManager:
         """Vérifie si le QIX touche directement un joueur"""
         if player_in_safe_zone or player_invincible:
             return False
-            
-        return player_position in self.position_qix
+        return tuple(player_position) in self.position_qix_set
     
     def handle_player_collision(self, player, player_num, historique_positions, 
                                trait_joueur_actuel, historique_deplacement,

@@ -1,4 +1,5 @@
 from fltk import *
+import sys
 from config.constants import VIES_INITIALES, GRILLE_PAS, VITESSE_TRACAGE_RAPIDE, FENETRE_CONFIG
 
 
@@ -86,7 +87,7 @@ def creer_coeurs():
     """
     positions_y = [90, 105, 120]
     for i, y in enumerate(positions_y, 1):
-        cercle(545, y, GRILLE_PAS, "red", "red", tag=f"coeur{i}")
+        cercle(545, y, GRILLE_PAS, "red", "red", tag=(f"coeur{i}"))
 
 
 def mettre_a_jour_score_pourcentage(pourcentage):
@@ -128,7 +129,7 @@ def mettre_a_jour_vies(nombre_vies):
     positions_y = [90, 105, 120]
     for i in range(nombre_vies):
         y = positions_y[i]
-        cercle(545, y, GRILLE_PAS, "red", "red", tag=f"coeur{i+1}")
+        cercle(545, y, GRILLE_PAS, "red", "red", tag=(f"coeur{i+1}"))
 
 
 def afficher_interface_2_joueurs(scorev=False):
@@ -143,14 +144,14 @@ def afficher_interface_2_joueurs(scorev=False):
     texte(680, 80, "CLAIMED", couleur="white", taille=20, police="Copperplate Gothic Bold")
     texte(765, 110, "75 %", couleur="white", taille=16, police="Copperplate Gothic Bold")
     texte(735, 110, "%", couleur="white", taille=16, police="Copperplate Gothic Bold")
-    texte(700, 110, "0", couleur="white", taille=16, police="Copperplate Gothic Bold", tag="score_pourcentage")
+    texte(700, 110, "0", couleur="white", taille=16, police="Copperplate Gothic Bold", tag=("score_pourcentage"))
     
     # Interface Joueur 1
     texte(650, 200, "JOUEUR 1", couleur="white", taille=20, police="Copperplate Gothic Bold")
     texte(650, 250, "SCORE :", couleur="white", taille=16, police="Copperplate Gothic Bold")
     
     score_affiche = "X" if not scorev else 0
-    texte(770, 250, score_affiche, couleur="white", taille=16, police="Copperplate Gothic Bold", tag="score_joueur1")
+    texte(770, 250, score_affiche, couleur="white", taille=16, police="Copperplate Gothic Bold", tag=("score_joueur1"))
     
     image(750, 340, "ressources/Pacman1_droite.png", largeur=100, hauteur=100)
     ligne(600, 440, 1000, 440, couleur="white")
@@ -159,7 +160,7 @@ def afficher_interface_2_joueurs(scorev=False):
     texte(650, 500, "JOUEUR 2", couleur="white", taille=20, police="Copperplate Gothic Bold")
     texte(650, 550, "SCORE :", couleur="white", taille=16, police="Copperplate Gothic Bold")
     
-    texte(770, 550, score_affiche, couleur="white", taille=16, police="Copperplate Gothic Bold", tag="score_joueur2")
+    texte(770, 550, score_affiche, couleur="white", taille=16, police="Copperplate Gothic Bold", tag=("score_joueur2"))
     
     image(750, 640, "ressources/Pacman2_droite.png", largeur=100, hauteur=100)
     
@@ -169,11 +170,11 @@ def afficher_interface_2_joueurs(scorev=False):
     efface("coeur3")
     
     # Cœurs Joueur 1
-    cercle(850, 250, GRILLE_PAS, "red", "red", tag="coeur1")
-    cercle(850, 265, GRILLE_PAS, "red", "red", tag="coeur2")
-    cercle(850, 280, GRILLE_PAS, "red", "red", tag="coeur3")
+    cercle(850, 250, GRILLE_PAS, "red", "red", tag=("coeur1"))
+    cercle(850, 265, GRILLE_PAS, "red", "red", tag=("coeur2"))
+    cercle(850, 280, GRILLE_PAS, "red", "red", tag=("coeur3"))
     
     # Cœurs Joueur 2
-    cercle(850, 550, GRILLE_PAS, "red", "red", tag="coeur1_2")
-    cercle(850, 565, GRILLE_PAS, "red", "red", tag="coeur2_2")
-    cercle(850, 580, GRILLE_PAS, "red", "red", tag="coeur3_2")
+    cercle(850, 550, GRILLE_PAS, "red", "red", tag=("coeur1_2"))
+    cercle(850, 565, GRILLE_PAS, "red", "red", tag=("coeur2_2"))
+    cercle(850, 580, GRILLE_PAS, "red", "red", tag=("coeur3_2"))
