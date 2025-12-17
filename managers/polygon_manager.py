@@ -24,18 +24,36 @@ class PolygonManager:
         self.surface_polygone = 0.0
         # helper cache (not persistent between calls) can be used by methods
         
-    def peut_creer_polygone(self, player, zone_safe, historique_positions):
-        """Vérifie si un joueur peut créer un polygone"""
-        if not player.is_in_zone(zone_safe):
-            return False
-            
-        if len(historique_positions) < 1:
-            return False
-            
-        if len(historique_positions) == 1:
-            return player.get_position() != historique_positions[0]
-            
-        return True
+    def peut_creer_polygone(self, player, zone_safe, historique_positions, zone_polygone=None):
+        """Vérifie si un joueur peut créer un polygone.
+
+        Autorise la création si :
+        - le joueur est dans `zone_safe` (comportement historique),
+        - ou si `zone_polygone` est fourni et la position du joueur appartient à un polygone existant
+          (permet de partir depuis un polygone déjà tracé).
+
+        La logique sur `historique_positions` est conservée pour éviter de considérer un seul
+        point identique comme création valide.
+        """
+        pos = player.get_position()
+
+        # Cas classique : joueur dans la zone safe
+        if player.is_in_zone(zone_safe):
+            if len(historique_positions) < 1:
+                return False
+            if len(historique_positions) == 1:
+                return pos != historique_positions[0]
+            return True
+
+        # Si le joueur se trouve sur un polygone existant (frontière), autoriser aussi
+        if zone_polygone is not None and pos in zone_polygone:
+            if len(historique_positions) < 1:
+                return False
+            if len(historique_positions) == 1:
+                return pos != historique_positions[0]
+            return True
+
+        return False
     
     def trouver_point_optimal(self, zone_safe, xQIX, yQIX, xAutrePoint, yAutrePoint, 
                              weight_proximite=0.3):

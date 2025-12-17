@@ -356,8 +356,8 @@ def jeu():
         # ═══════════════════════════════════════════════════════════════════════════════════════════════════
         # CRÉATION D'UN POLYGON
         # ═══════════════════════════════════════════════════════════════════════════════════════════════════
-        joueur1_peut_creer = polygon_manager.peut_creer_polygone(player1, zone_safe, historique_positions)
-        joueur2_peut_creer = (deux and polygon_manager.peut_creer_polygone(player2, zone_safe, historique_positions2))
+        joueur1_peut_creer = polygon_manager.peut_creer_polygone(player1, zone_safe, historique_positions, zone_polygone)
+        joueur2_peut_creer = (deux and polygon_manager.peut_creer_polygone(player2, zone_safe, historique_positions2, zone_polygone))
         if joueur1_peut_creer or joueur2_peut_creer:
             # PHASE 1 : sélection du joueur et préparation
             zone_interieure = []
