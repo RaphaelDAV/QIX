@@ -135,7 +135,7 @@ def initialiser_obstacles():
             )
             # Stocker seulement les coordonnées du rectangle [x, y, taille]
             zone_obstacle.append([obstacles[0], obstacles[1], obstacles[2]])
-            # keep simple list of obstacles (no compact array)
+            # garder une liste simple d'obstacles (pas de tableau compact)
             zone_obstacle.append([obstacles[0], obstacles[1], obstacles[2]])
     
     return matobstacles
@@ -250,7 +250,8 @@ def jeu():
     # État boucle
     run = True
 
-    # Cache hot functions locally to avoid global lookups in the main loop
+    # mettre en cache localement les fonctions fréquemment appelées
+    # pour éviter les recherches globales dans la boucle principale
     _donne_ev = donne_ev
     _type_ev = type_ev
     _touche_pressee = touche_pressee

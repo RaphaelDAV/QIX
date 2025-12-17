@@ -7,13 +7,14 @@ from typing import Iterable, List, Tuple, Optional
 
 
 class ZoneGrid(MutableSequence):
-    """Lazy grid-backed sequence of grid-aligned points.
+    """Séquence paresseuse basée sur une grille de points alignés.
 
-    Behaves like a list of `[x, y]` points aligned on a regular grid
-    between xmin..xmax and ymin..ymax with step `pas`.  The full list
-    is *not* generated until operations that require random access or
-    mutation are used.  Membership checks (`in`) are implemented
-    efficiently without allocating the whole grid.
+    Se comporte comme une liste de points `[x, y]` alignés sur une
+    grille régulière entre xmin..xmax et ymin..ymax avec un pas `pas`.
+    La liste complète n'est *pas* générée tant que des opérations
+    nécessitant un accès aléatoire ou une mutation ne sont pas utilisées.
+    Les vérifications d'appartenance (`in`) sont implémentées de façon
+    efficace sans allouer la grille entière.
     """
 
     def __init__(self, xmin: int, xmax: int, ymin: int, ymax: int, pas: int):
@@ -23,12 +24,12 @@ class ZoneGrid(MutableSequence):
         self.ymax = ymax
         self.pas = pas
 
-        # transient caches / mutation buffers
+        # caches transitoires / tampons de mutation
         self._removed: set[Tuple[int, int]] = set()
         self._added: List[List[int]] = []
         self._cache: Optional[List[List[int]]] = None
 
-    # --- lazy helpers ---
+    # --- fonctions paresseuses ---
     def _aligned(self, x: int, y: int) -> bool:
         return (
             self.xmin <= x <= self.xmax
@@ -38,14 +39,14 @@ class ZoneGrid(MutableSequence):
         )
 
     def _generate(self) -> List[List[int]]:
-        """Materialize the full list of points (taking removals and additions into account)."""
+        """Matérialise la liste complète de points (en tenant compte des suppressions et ajouts)."""
         pts: List[List[int]] = []
         for y in range(self.ymin, self.ymax + 1, self.pas):
             for x in range(self.xmin, self.xmax + 1, self.pas):
                 if (x, y) in self._removed:
                     continue
                 pts.append([x, y])
-        # incorporate added points (preserve order of additions)
+        # incorporer les points ajoutés (préserver l'ordre d'ajout)
         if self._added:
             pts.extend(self._added)
         return pts
@@ -54,11 +55,11 @@ class ZoneGrid(MutableSequence):
         if self._cache is None:
             self._cache = self._generate()
 
-    # --- MutableSequence API ---
+    # --- API MutableSequence ---
     def __len__(self) -> int:
         if self._cache is not None:
             return len(self._cache)
-        # compute size without materializing full list
+        # calculer la taille sans matérialiser la liste complète
         nx = ((self.xmax - self.xmin) // self.pas) + 1
         ny = ((self.ymax - self.ymin) // self.pas) + 1
         return nx * ny - len(self._removed) + len(self._added)
@@ -83,7 +84,7 @@ class ZoneGrid(MutableSequence):
         if self._cache is not None:
             yield from self._cache
             return
-        # iterate lazily without allocating full list
+        # itérer paresseusement sans allouer la liste complète
         for y in range(self.ymin, self.ymax + 1, self.pas):
             for x in range(self.xmin, self.xmax + 1, self.pas):
                 if (x, y) in self._removed:
@@ -93,7 +94,7 @@ class ZoneGrid(MutableSequence):
             yield p
 
     def __contains__(self, item) -> bool:
-        # accept list/tuple [x,y] or (x,y)
+        # accepter liste/tuple [x,y] ou (x,y)
         try:
             x, y = (item[0], item[1])
         except Exception:
@@ -104,15 +105,15 @@ class ZoneGrid(MutableSequence):
             return False
         return self._aligned(x, y)
 
-    # convenience methods that mutate
+    # méthodes utilitaires qui modifient
     def remove(self, value):
-        # prefer marking removal instead of materializing
+        # préférer marquer la suppression plutôt que de matérialiser
         try:
             x, y = (value[0], value[1])
         except Exception:
             raise ValueError("value not in ZoneGrid")
         if [x, y] in self._added:
-            # remove from additions if present
+            # retirer des ajouts si présent
             self._added.remove([x, y])
             if self._cache is not None:
                 try:
@@ -135,7 +136,7 @@ class ZoneGrid(MutableSequence):
             self._cache.append([value[0], value[1]])
 
     def clear(self):
-        # resetting to empty materializes semantics
+        # réinitialiser à vide matérialise la sémantique
         self._cache = []
         self._removed.clear()
         self._added.clear()
@@ -181,7 +182,7 @@ def initialiser_zones_terrain():
         'position_qix': []
     }
 
-    # compact storage for obstacles (kept as list of tuples)
+    # stockage compact pour obstacles (conservé comme liste de tuples)
     zones['zone_obstacle'] = zones.get('zone_obstacle', [])
 
     # Génération des zones safe (bordures)

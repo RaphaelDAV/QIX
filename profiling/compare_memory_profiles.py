@@ -1,13 +1,14 @@
-"""Compare memory profiles before/after optimizations.
+"""Compare les profils mémoire avant/après optimisations.
 
 Usage (PowerShell):
 
 & .\.venv\Scripts\Activate.ps1
 python profiling/compare_memory_profiles.py
 
-It will clone the repository into `profiling_before` if missing, run
-`profiling/run_memory_profile_qix.py` in both copies and print a small
-report. It also appends the results to `README_MEMORY_OPTIM.md`.
+Ce script clone le dépôt dans `profiling_before` si nécessaire, exécute
+`profiling/run_memory_profile_qix.py` dans les deux copies et affiche
+un petit rapport. Il ajoute également les résultats dans
+`README_MEMORY_OPTIM.md`.
 """
 import subprocess
 import sys
@@ -34,7 +35,7 @@ def parse_output(out: str):
     return cur, peak
 
 def main():
-    # clone before if missing
+    # cloner le dépôt si absent
     if not BEFORE_DIR.exists():
         print("Cloning repository to profiling_before for baseline...")
         subprocess.check_call(["git", "clone", ".", str(BEFORE_DIR)])
@@ -62,7 +63,7 @@ def main():
 
     print(report)
 
-    # append to README
+    # ajouter au README
     readme = ROOT / "README_MEMORY_OPTIM.md"
     with readme.open("a", encoding="utf-8") as f:
         f.write("\n---\n")
