@@ -17,6 +17,13 @@ from fltk import *
 from time import sleep
 import sys
 
+# Safe `profile` shim so the file runs normally when `line_profiler` is not present.
+try:
+    profile
+except NameError:
+    def profile(f):
+        return f
+
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 # CONFIGURATION & CONSTANTES
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -53,6 +60,7 @@ def ferme_fenetre_securise():
     except:
         pass  # La fenêtre a déjà été fermée
 
+@profile
 def fenetre():
     """Crée la fenêtre de jeu et l'interface (1 ou 2 joueurs) depuis les constantes."""
     largeur_fenetre, hauteur_fenetre = creer_fenetre_jeu(game_state.config["deux"])
@@ -63,6 +71,7 @@ def fenetre():
 # UTILITAIRES D'INIT
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
+@profile
 def initialiser_niveau():
     """Retourne (niveau_actuel, mode_menu) selon les flags de sélection de niveau."""
     niveau1 = game_state.config["niveau1"]
@@ -81,6 +90,7 @@ def initialiser_niveau():
     return niveau_actuel, mode_menu
 
 
+@profile
 def creer_entites_jeu(niveau_actuel, mode_menu):
     """Instancie QIX, Sparks, collisions joueurs et règle la vitesse du QIX pour le niveau."""
     qix_entite = creer_qix(niveau_actuel)
@@ -93,6 +103,7 @@ def creer_entites_jeu(niveau_actuel, mode_menu):
     return qix_manager, sparks_manager, player_collision_manager
 
 
+@profile
 def initialiser_joueurs():
     """Crée Player 1 (et 2 si nécessaire) et renvoie les paramètres utiles du joueur."""
     taille = Joueur1["taille"]
@@ -103,6 +114,7 @@ def initialiser_joueurs():
         player1.draw()
     return player1, player2, taille, vitesse_deplacement
 
+@profile
 def configurer_niveau(niveau_actuel):
     """Extrait les paramètres du niveau (QIX, Sparks, couleurs) depuis NIVEAUX."""
     xQIX, yQIX = CONFIG_QIX["x"], CONFIG_QIX["y"]
@@ -114,6 +126,7 @@ def configurer_niveau(niveau_actuel):
     return xQIX, yQIX, vitesse_QIX, longueur_deplacement_QIX, couleur_sparks, vitesse_sparks
 
 
+@profile
 def initialiser_obstacles():
     """Charge et dessine les obstacles ; stocke les rectangles pour les collisions."""
     obstacle = game_state.config["obstacle"]
@@ -141,6 +154,7 @@ def initialiser_obstacles():
     return matobstacles
 
 
+@profile
 def initialiser_bonus():
     """Génère les pommes/bonus si activés et retourne (positions, manager)."""
     bonus = game_state.config["bonus"]
@@ -159,6 +173,7 @@ def initialiser_bonus():
 # BOUCLE DE JEU
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
+@profile
 def jeu():
     """Boucle principale : entrées, tracé, polygones, collisions, QIX, score et fin de partie."""
     # Initialisation des gestionnaires

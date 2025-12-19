@@ -6,16 +6,26 @@ from random import *
 from math import *
 import os.path
 
+# Safe `profile` shim so the file runs normally when `line_profiler` is not present.
+try:
+    profile
+except NameError:
+    def profile(f):
+        return f
+
 
 # ----------------------------------------Paramètres des personnages et des sparks-------------------------------------------------
+@profile
 def joueur1(x, y, cote, sprite):
     image(x + 5, y + 5, sprite, largeur=cote + 5, hauteur=cote + 5, tag="joueur1")
 
 
+@profile
 def joueur2(x, y, cote, sprite):
     image(x + 5, y + 5, sprite, largeur=cote + 5, hauteur=cote + 5, tag="joueur2")
 
 
+@profile
 def sparks1(cxsparks1, cysparks1, taille, sprite):
     image(
         cxsparks1,
@@ -27,6 +37,7 @@ def sparks1(cxsparks1, cysparks1, taille, sprite):
     )
 
 
+@profile
 def sparks2(cxsparks2, cysparks2, taille, sprite):
     image(
         cxsparks2,
@@ -38,6 +49,7 @@ def sparks2(cxsparks2, cysparks2, taille, sprite):
     )
 
 
+@profile
 def sparks3(cxsparks3, cysparks3, taille, sprite):
     image(
         cxsparks3,
@@ -49,6 +61,7 @@ def sparks3(cxsparks3, cysparks3, taille, sprite):
     )
 
 
+@profile
 def sparks4(cxsparks4, cysparks4, taille, sprite):
     image(
         cxsparks4,
@@ -60,6 +73,7 @@ def sparks4(cxsparks4, cysparks4, taille, sprite):
     )
 
 
+@profile
 def sparks5(cxsparks5, cysparks5, taille, sprite):
     image(
         cxsparks5,
@@ -71,6 +85,7 @@ def sparks5(cxsparks5, cysparks5, taille, sprite):
     )
 
 
+@profile
 def sparks6(cxsparks6, cysparks6, taille, sprite):
     image(
         cxsparks6,
@@ -83,6 +98,7 @@ def sparks6(cxsparks6, cysparks6, taille, sprite):
 
 
 # ---------------------------------------Paramètres de la fenêtre---------------------------------------------------
+@profile
 def fenetre():
     with open("ressources/parametres.txt", "r") as fichier:
         # Lire toutes les lignes dans une liste
@@ -270,6 +286,7 @@ for i in range(200, 750, 5):
         zone_terrain.append([k, i])
 
 
+@profile
 def Accueil():
     """
     Cree un menu d'accueil avec un bouton jouer et un bouton quitter. Renvoie True si on appuie sur jouer et False si on appuie sur quitter
@@ -372,6 +389,7 @@ def Accueil():
             return False
 
 
+@profile
 def variantes():
     """
     Cree un menu d'accueil avec un bouton jouer et un bouton quitter. Renvoie True si on appuie sur jouer et False si on appuie sur quitter
@@ -1604,6 +1622,7 @@ def variantes():
         )
 
 
+@profile
 def placer_pomme():
     x, y = randint(100, 500), randint(250, 700)
     while x % 5 != 0 or y % 5 != 0 or [x, y] in zone_obstacle:
@@ -1611,11 +1630,13 @@ def placer_pomme():
     return x, y
 
 
+@profile
 def time_pour_bonus():
     t = time()
     return t
 
 
+@profile
 def echanger_listes(liste1, liste2):
     # Échanger le contenu des listes en utilisant une variable temporaire
     temp = liste1.copy()
@@ -1626,6 +1647,7 @@ def echanger_listes(liste1, liste2):
 # -------------------------------------Paramètres du joueur---------------------------------------------------------
 
 
+@profile
 def jeu():
 
     # parametres configures
