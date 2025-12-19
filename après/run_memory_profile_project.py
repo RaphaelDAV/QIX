@@ -19,10 +19,59 @@ if mprof_cmd is None:
     sys.exit(1)
 
 print(f"Running: mprof run {script_basename} (cwd={this_dir})")
-res = subprocess.run([mprof_cmd, 'run', script_basename], cwd=this_dir)
+import tempfile
+import textwrap
+# Create a temporary fltk stub directory and prepend it to PYTHONPATH so the GUI is not created
+tmpdir = tempfile.mkdtemp(prefix='fltk_stub_')
+stub_file = os.path.join(tmpdir, 'fltk.py')
+with open(stub_file, 'w', encoding='utf-8') as f:
+    f.write(textwrap.dedent('''
+        # Minimal headless stub for fltk used during profiling
+        def cree_fenetre(*args, **kwargs):
+            return None
+        def ferme_fenetre():
+            return None
+        def mise_a_jour():
+            return None
+        def image(*args, **kwargs):
+            return 0
+        def rectangle(*args, **kwargs):
+            return 0
+        def ligne(*args, **kwargs):
+            return 0
+        def polygone(*args, **kwargs):
+            return 0
+        def texte(*args, **kwargs):
+            return 0
+        def efface(*args, **kwargs):
+            return None
+        def efface_tout():
+            return None
+        def attente(t):
+            pass
+        def touche_pressee(key):
+            return lambda k: False
+        def hauteur_fenetre():
+            return 600
+        def largeur_fenetre():
+            return 800
+    '''))
+
+env = os.environ.copy()
+env['PYTHONPATH'] = tmpdir + os.pathsep + env.get('PYTHONPATH', '')
+res = subprocess.run([mprof_cmd, 'run', script_basename], cwd=this_dir, env=env)
 if res.returncode != 0:
     print('mprof run failed.')
+    try:
+        shutil.rmtree(tmpdir)
+    except Exception:
+        pass
     sys.exit(res.returncode)
+
+try:
+    shutil.rmtree(tmpdir)
+except Exception:
+    pass
 
 candidates = glob.glob(os.path.join(this_dir, 'mprofile_*.dat'))
 if not candidates:

@@ -2,6 +2,7 @@ import os
 import sys
 import runpy
 import cProfile
+import importlib.util
 
 this_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(this_dir, '..'))
@@ -19,6 +20,15 @@ pr = cProfile.Profile()
 old_cwd = os.getcwd()
 try:
     os.chdir(this_dir)
+    try:
+        import fltk as _real_fltk
+    except Exception:
+        stub_path = os.path.join(this_dir, 'fltk_headless.py')
+        if os.path.exists(stub_path):
+            spec = importlib.util.spec_from_file_location('fltk', stub_path)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            sys.modules['fltk'] = mod
     pr.enable()
     runpy.run_path(main_script, run_name='__main__')
 finally:
