@@ -1,3 +1,5 @@
+Afin de bien reproduire les différent tests, vous devez suivre ce guide.
+
 # Profilage mémoire
 
 ## Avant
@@ -23,4 +25,27 @@ max 48.789062
 mean 42.83937861111111
 last 44.152344
 ```
+ 
+# Profilage Linéaire
 
+## Avant
+```
+cd ./avant
+python -m kernprof -l -v .\QIX_Raphael_DAVIOT_Nael_AIT_AISSI.py
+```
+
+après le fichier .lprof généré, vous executé :
+```
+python -m line_profiler .\QIX_Raphael_DAVIOT_Nael_AIT_AISSI.py.lprof > line_profile.txt
+```
+
+## Après
+```
+cd ./après
+python -m kernprof -l -v .\QIX_Raphael_DAVIOT_Abdelrahim_RICHE.py
+```
+
+après le fichier .lprof généré, vous executé :
+```
+python -m line_profiler .\QIX_Raphael_DAVIOT_Abdelrahim_RICHE.py.lprof > line_profile.txt
+```
