@@ -76,7 +76,3 @@ Conseils pratiques
 Ressources
 - memory_profiler: https://pypi.org/project/memory-profiler/
 - line_profiler (kernprof): https://pypi.org/project/line-profiler/
-
-Si vous voulez, je peux :
-- lancer les commandes `kernprof` + `line_profiler` pour l'une des versions et sauvegarder le rapport dans `stats` (indiquez `avant` ou `après`),
-- ou générer une version PDF/HTML du rapport.
