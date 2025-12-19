@@ -21,8 +21,12 @@ if mprof_cmd is None:
 print(f"Running: mprof run {script_basename} (cwd={this_dir})")
 import tempfile
 import textwrap
-# Create a temporary fltk stub directory and prepend it to PYTHONPATH so the GUI is not created
+
+# Create a temporary workspace and copy the main script there so imports resolve to our stub
 tmpdir = tempfile.mkdtemp(prefix='fltk_stub_')
+copied_script = os.path.join(tmpdir, script_basename)
+shutil.copy2(main_script, copied_script)
+
 stub_file = os.path.join(tmpdir, 'fltk.py')
 with open(stub_file, 'w', encoding='utf-8') as f:
     f.write(textwrap.dedent('''
@@ -57,9 +61,8 @@ with open(stub_file, 'w', encoding='utf-8') as f:
             return 800
     '''))
 
-env = os.environ.copy()
-env['PYTHONPATH'] = tmpdir + os.pathsep + env.get('PYTHONPATH', '')
-res = subprocess.run([mprof_cmd, 'run', script_basename], cwd=this_dir, env=env)
+# Run mprof inside tmpdir so imports pick up our stub fltk.py
+res = subprocess.run([mprof_cmd, 'run', script_basename], cwd=tmpdir)
 if res.returncode != 0:
     print('mprof run failed.')
     try:
@@ -68,14 +71,9 @@ if res.returncode != 0:
         pass
     sys.exit(res.returncode)
 
-try:
-    shutil.rmtree(tmpdir)
-except Exception:
-    pass
-
-candidates = glob.glob(os.path.join(this_dir, 'mprofile_*.dat'))
+candidates = glob.glob(os.path.join(tmpdir, 'mprofile_*.dat'))
 if not candidates:
-    candidates = glob.glob(os.path.join(project_root, 'mprofile_*.dat')) or glob.glob(os.path.join(os.getcwd(), 'mprofile_*.dat'))
+    candidates = glob.glob(os.path.join(this_dir, 'mprofile_*.dat')) or glob.glob(os.path.join(project_root, 'mprofile_*.dat')) or glob.glob(os.path.join(os.getcwd(), 'mprofile_*.dat'))
 
 if not candidates:
     print('No mprofile_*.dat produced. Check mprof output for errors.')
@@ -93,5 +91,10 @@ try:
 except Exception as e:
     print('Failed to move memory profile file:', e)
     sys.exit(1)
+
+try:
+    shutil.rmtree(tmpdir)
+except Exception:
+    pass
 
 print('You can visualise memory traces with `mprof plot <path>` or inspect with memory_profiler utilities.')

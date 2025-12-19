@@ -7,7 +7,6 @@ this_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(this_dir, '..'))
 main_script = os.path.join(project_root, 'avant/QIX_Raphael_DAVIOT_&_Nael_AIT_AISSI.py')
 script_basename = os.path.basename(main_script)
-expected_lprof = os.path.join(this_dir, script_basename + '.lprof')
 stats_dir = os.path.join(project_root, 'stats', 'avant')
 os.makedirs(stats_dir, exist_ok=True)
 output_lprof = os.path.join(stats_dir, 'project_line_avant.lprof')
@@ -21,10 +20,13 @@ if kernprof_cmd is None:
     print('kernprof not found in PATH. Install line_profiler (pip install line_profiler) to get kernprof.')
     sys.exit(1)
 
-print(f"Running: kernprof -l {script_basename} (cwd={this_dir})")
+print(f"Running: kernprof -l {script_basename}")
 import tempfile
 import textwrap
 tmpdir = tempfile.mkdtemp(prefix='fltk_stub_')
+# Copy the main script into the temporary dir and write a local stub there
+copied_script = os.path.join(tmpdir, script_basename)
+shutil.copy2(main_script, copied_script)
 stub_file = os.path.join(tmpdir, 'fltk.py')
 with open(stub_file, 'w', encoding='utf-8') as f:
     f.write(textwrap.dedent('''
@@ -61,7 +63,8 @@ with open(stub_file, 'w', encoding='utf-8') as f:
 
 env = os.environ.copy()
 env['PYTHONPATH'] = tmpdir + os.pathsep + env.get('PYTHONPATH', '')
-res = subprocess.run([kernprof_cmd, '-l', script_basename], cwd=this_dir, env=env)
+# Run kernprof from the temporary directory where the copied script and stub live
+res = subprocess.run([kernprof_cmd, '-l', script_basename], cwd=tmpdir, env=env)
 if res.returncode != 0:
     print('kernprof failed.')
     try:
@@ -69,21 +72,22 @@ if res.returncode != 0:
     except Exception:
         pass
     sys.exit(res.returncode)
-
+expected_lprof = os.path.join(tmpdir, script_basename + '.lprof')
 try:
-    shutil.rmtree(tmpdir)
-except Exception:
-    pass
-    
-if os.path.exists(expected_lprof):
-    try:
-        shutil.move(expected_lprof, output_lprof)
-        print(f'Line profile saved to {output_lprof}')
-    except Exception as e:
-        print('Failed to move lprof file:', e)
+    if os.path.exists(expected_lprof):
+        try:
+            shutil.move(expected_lprof, output_lprof)
+            print(f'Line profile saved to {output_lprof}')
+        except Exception as e:
+            print('Failed to move lprof file:', e)
+            sys.exit(1)
+    else:
+        print('Expected .lprof file not found. kernprof may not have produced output.')
         sys.exit(1)
-else:
-    print('Expected .lprof file not found. kernprof may not have produced output.')
-    sys.exit(1)
+finally:
+    try:
+        shutil.rmtree(tmpdir)
+    except Exception:
+        pass
 
 print('You can inspect the results with `python -m line_profiler <path>` or `kernprof -lv` prints during run.')
